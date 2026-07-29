@@ -11,6 +11,7 @@ from app.exceptions import (
     FetchFailureError,
     InvalidURLError,
     ListingNotFoundError,
+    StaticContentInsufficientError,
 )
 from app.services.page_fetcher import FetcherConfig, PageFetcher
 
@@ -176,7 +177,7 @@ async def test_page_fetcher_detects_empty_application_shell() -> None:
     async with build_client(httpx.MockTransport(handler)) as client:
         fetcher = PageFetcher(client=client, resolver=allow_public_resolution)
 
-        with pytest.raises(AccessBlockedError, match="empty application shell"):
+        with pytest.raises(StaticContentInsufficientError, match="empty application shell"):
             await fetcher.fetch("https://www.zillow.com/homedetails/example")
 
 

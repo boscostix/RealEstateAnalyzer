@@ -1,24 +1,25 @@
 """API routes for listing extraction."""
 
+import time
 from collections.abc import Awaitable, Callable
 from typing import cast
 
-from fastapi import APIRouter, FastAPI, Request, status
+from fastapi import APIRouter, Depends, FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
-from app.exceptions import AppError, UnsupportedProviderError
-from app.models.extraction import (
-    ErrorDetail,
-    ExtractionMetadata,
-    ExtractListingRequest,
-    ExtractListingResponse,
-)
-from app.models.property import NormalizedProperty
-from app.services.provider_registry import ProviderRegistry
-from app.utils.urls import validate_listing_url
+from app.exceptions import AppError, InternalApplicationError
+from app.logging import logger
+from app.models.extraction import ErrorDetail, ExtractListingRequest, ExtractListingResponse
+from app.services.listing_service import ListingService
 
 router = APIRouter()
-registry = ProviderRegistry.default()
+
+
+def get_listing_service() -> ListingService:
+    return ListingService()
+
+
+listing_service_dependency = Depends(get_listing_service)
 
 
 async def app_error_handler(_: Request, exc: AppError) -> JSONResponse:
@@ -35,12 +36,29 @@ async def app_error_handler(_: Request, exc: AppError) -> JSONResponse:
     )
 
 
+async def unexpected_error_handler(_: Request, exc: Exception) -> JSONResponse:
+    error = InternalApplicationError()
+    logger.exception("unhandled_exception", exc_info=exc)
+    return JSONResponse(
+        status_code=error.status_code,
+        content={
+            "success": False,
+            "error": ErrorDetail(
+                code=error.code,
+                message=error.message,
+                retryable=error.retryable,
+            ).model_dump(mode="json"),
+        },
+    )
+
+
 def add_exception_handlers(app: FastAPI) -> None:
     handler = cast(
         Callable[[Request, Exception], Awaitable[JSONResponse]],
         app_error_handler,
     )
     app.add_exception_handler(AppError, handler)
+    app.add_exception_handler(Exception, unexpected_error_handler)
 
 
 @router.post(
@@ -48,25 +66,56 @@ def add_exception_handlers(app: FastAPI) -> None:
     response_model=ExtractListingResponse,
     status_code=status.HTTP_200_OK,
 )
-async def extract_listing(request: ExtractListingRequest) -> ExtractListingResponse:
-    validated_url = validate_listing_url(str(request.url))
-    provider = registry.get_provider_name(validated_url)
+async def extract_listing(
+    request: Request,
+    payload: ExtractListingRequest,
+    service: ListingService = listing_service_dependency,
+) -> ExtractListingResponse:
+    request_id = getattr(request.state, "request_id", "unknown")
+    started_at = time.perf_counter()
+    domain = payload.url.host or ""
 
-    if provider is None:
-        raise UnsupportedProviderError(message="This listing website is not currently supported.")
+    try:
+        result = await service.extract(str(payload.url))
+    except AppError as exc:
+        total_duration_ms = int((time.perf_counter() - started_at) * 1000)
+        logger.warning(
+            "listing_extract_failed "
+            "request_id=%s provider=%s domain=%s fetch_method=%s fetch_duration_ms=%s "
+            "parsing_duration_ms=%s fields_found=%s warning_count=%s error_code=%s "
+            "duration_ms=%s",
+            request_id,
+            None,
+            domain,
+            None,
+            0,
+            0,
+            0,
+            0,
+            exc.code,
+            total_duration_ms,
+        )
+        raise
 
-    return ExtractListingResponse(
-        success=True,
-        provider=provider,
-        source_url=validated_url,
-        property=NormalizedProperty(
-            source_url=validated_url,
-            provider=provider,
-        ),
-        metadata=ExtractionMetadata(
-            extraction_method="pending",
-            fields_found=0,
-            fields_missing=[],
-            warnings=["Extraction is not implemented until later phases."],
-        ),
+    total_duration_ms = int((time.perf_counter() - started_at) * 1000)
+    fields_found = 0 if result.response.metadata is None else result.response.metadata.fields_found
+    warning_count = (
+        0 if result.response.metadata is None else len(result.response.metadata.warnings)
     )
+    logger.info(
+        "listing_extract_completed "
+        "request_id=%s provider=%s domain=%s fetch_method=%s fetch_duration_ms=%s "
+        "parsing_duration_ms=%s fields_found=%s warning_count=%s error_code=%s "
+        "duration_ms=%s",
+        request_id,
+        result.provider,
+        result.domain,
+        result.fetch_method,
+        result.fetch_duration_ms,
+        result.parsing_duration_ms,
+        fields_found,
+        warning_count,
+        None,
+        total_duration_ms,
+    )
+    return result.response

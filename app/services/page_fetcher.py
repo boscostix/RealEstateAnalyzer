@@ -8,6 +8,8 @@ from urllib.parse import urljoin, urlparse
 
 import httpx
 from bs4 import BeautifulSoup
+from playwright.async_api import Browser, TimeoutError, async_playwright
+from playwright.async_api import Error as PlaywrightError
 
 from app.exceptions import (
     AccessBlockedError,
@@ -15,6 +17,7 @@ from app.exceptions import (
     FetchFailureError,
     InvalidURLError,
     ListingNotFoundError,
+    StaticContentInsufficientError,
 )
 from app.models.extraction import FetchedPage
 from app.utils.urls import validate_listing_url, validate_resolved_addresses
@@ -200,7 +203,7 @@ class PageFetcher:
             raise AccessBlockedError()
 
         if _looks_like_empty_application_shell(html):
-            raise AccessBlockedError(
+            raise StaticContentInsufficientError(
                 message=(
                     "The listing website returned an empty application shell "
                     "instead of listing content."
@@ -263,3 +266,91 @@ def _looks_like_empty_application_shell(html: str) -> bool:
     shell_markers = ("__next", 'id="root"', 'id="app"', "data-reactroot")
     has_shell_marker = any(marker in html.lower() for marker in shell_markers)
     return has_shell_marker and len(visible_text) < 50
+
+
+class PlaywrightPageFetcher:
+    """Fallback page fetcher for JavaScript-rendered listing pages."""
+
+    def __init__(
+        self,
+        *,
+        resolver: Resolver | None = None,
+        browser_timeout_ms: int = 15000,
+    ) -> None:
+        self._resolver = resolver or default_resolver
+        self._browser_timeout_ms = browser_timeout_ms
+
+    async def fetch(self, url: str) -> FetchedPage:
+        """Load a page in Playwright after revalidating the requested and final URL."""
+
+        validated_url = validate_listing_url(url)
+        await self._validate_hostname(validated_url)
+
+        try:
+            async with async_playwright() as playwright:
+                browser = await playwright.chromium.launch(headless=True)
+                try:
+                    page = await browser.new_page(
+                        user_agent=FetcherConfig().user_agent,
+                    )
+                    response = await page.goto(
+                        validated_url,
+                        wait_until="domcontentloaded",
+                        timeout=self._browser_timeout_ms,
+                    )
+                    await page.wait_for_load_state("networkidle", timeout=self._browser_timeout_ms)
+                    final_url = page.url
+                    html = await page.content()
+                finally:
+                    await _safe_close_browser(browser)
+        except TimeoutError as exc:
+            raise FetchFailureError(
+                message="Timed out while rendering the listing page in Playwright.",
+                retryable=True,
+            ) from exc
+        except PlaywrightError as exc:
+            raise FetchFailureError(
+                message="Failed to render the listing page in Playwright.",
+                retryable=True,
+            ) from exc
+
+        validated_final_url = validate_listing_url(final_url)
+        await self._validate_hostname(validated_final_url)
+        status_code = 200 if response is None else response.status
+
+        if len(html.encode("utf-8")) > FetcherConfig().max_response_bytes:
+            raise FetchFailureError(
+                message="The rendered listing page response exceeded the allowed size limit.",
+                retryable=False,
+            )
+
+        PageFetcher()._raise_for_problem_response(
+            httpx.Response(status_code, request=httpx.Request("GET", validated_final_url)),
+            html,
+        )
+        PageFetcher()._raise_for_blocked_page(
+            httpx.Response(status_code, request=httpx.Request("GET", validated_final_url)),
+            html,
+        )
+
+        return FetchedPage(
+            requested_url=validated_url,
+            final_url=validated_final_url,
+            status_code=status_code,
+            html=html,
+            fetch_method="playwright",
+            warnings=[],
+        )
+
+    async def _validate_hostname(self, url: str) -> None:
+        hostname = urlparse(url).hostname
+        if hostname is None:
+            raise InvalidURLError(message="A valid absolute URL is required.")
+        await validate_resolved_addresses(hostname, self._resolver)
+
+
+async def _safe_close_browser(browser: Browser) -> None:
+    try:
+        await browser.close()
+    except PlaywrightError:
+        return None

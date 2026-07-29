@@ -73,3 +73,15 @@ class InsufficientListingDataError(AppError):
     code = "insufficient_listing_data"
     message = "The listing page did not contain enough data to extract."
     status_code = 422
+
+
+class StaticContentInsufficientError(AppError):
+    code = "static_content_insufficient"
+    message = "The static page response did not contain enough content to parse."
+    status_code = 422
+
+
+class InternalApplicationError(AppError):
+    code = "internal_server_error"
+    message = "An internal server error occurred."
+    status_code = 500
