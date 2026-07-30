@@ -30,8 +30,9 @@ async def app_error_handler(_: Request, exc: AppError) -> JSONResponse:
             "error": ErrorDetail(
                 code=exc.code,
                 message=exc.message,
+                field=exc.field,
                 retryable=exc.retryable,
-            ).model_dump(mode="json"),
+            ).model_dump(mode="json", exclude_none=True),
         },
     )
 
@@ -46,8 +47,9 @@ async def unexpected_error_handler(_: Request, exc: Exception) -> JSONResponse:
             "error": ErrorDetail(
                 code=error.code,
                 message=error.message,
+                field=error.field,
                 retryable=error.retryable,
-            ).model_dump(mode="json"),
+            ).model_dump(mode="json", exclude_none=True),
         },
     )
 

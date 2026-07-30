@@ -52,6 +52,7 @@ class ErrorDetail(BaseModel):
 
     code: str
     message: str
+    field: str | None = None
     retryable: bool = False
 
 
