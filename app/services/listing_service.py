@@ -51,6 +51,21 @@ class ListingService:
             )
 
         domain = urlparse(validated_url).hostname or ""
+        parsing_started_at = time.perf_counter()
+        direct_result = await provider.extract_from_url(validated_url)
+        if direct_result is not None:
+            parsing_duration_ms = int((time.perf_counter() - parsing_started_at) * 1000)
+            response = _response_from_result(direct_result)
+            return ListingServiceResult(
+                response=response,
+                provider=provider.name,
+                domain=domain,
+                fetch_method="api",
+                fetch_duration_ms=0,
+                parsing_duration_ms=parsing_duration_ms,
+                final_url=validated_url,
+            )
+
         fetch_duration_ms = 0
         fetch_method = "http"
 

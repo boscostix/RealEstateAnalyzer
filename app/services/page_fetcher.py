@@ -275,10 +275,12 @@ class PlaywrightPageFetcher:
         self,
         *,
         resolver: Resolver | None = None,
-        browser_timeout_ms: int = 15000,
+        browser_timeout_ms: int = 30000,
+        network_idle_timeout_ms: int = 5000,
     ) -> None:
         self._resolver = resolver or default_resolver
         self._browser_timeout_ms = browser_timeout_ms
+        self._network_idle_timeout_ms = network_idle_timeout_ms
 
     async def fetch(self, url: str) -> FetchedPage:
         """Load a page in Playwright after revalidating the requested and final URL."""
@@ -293,12 +295,30 @@ class PlaywrightPageFetcher:
                     page = await browser.new_page(
                         user_agent=FetcherConfig().user_agent,
                     )
-                    response = await page.goto(
-                        validated_url,
-                        wait_until="domcontentloaded",
-                        timeout=self._browser_timeout_ms,
-                    )
-                    await page.wait_for_load_state("networkidle", timeout=self._browser_timeout_ms)
+                    try:
+                        response = await page.goto(
+                            validated_url,
+                            wait_until="domcontentloaded",
+                            timeout=self._browser_timeout_ms,
+                        )
+                    except TimeoutError as exc:
+                        raise FetchFailureError(
+                            message=(
+                                "Timed out while navigating to the listing page "
+                                "in Playwright."
+                            ),
+                            retryable=True,
+                        ) from exc
+
+                    try:
+                        await page.wait_for_load_state(
+                            "networkidle",
+                            timeout=self._network_idle_timeout_ms,
+                        )
+                    except TimeoutError:
+                        # Some sites keep background requests open indefinitely.
+                        # We already have DOM content, so proceed with the page snapshot.
+                        pass
                     final_url = page.url
                     html = await page.content()
                 finally:

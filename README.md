@@ -16,6 +16,7 @@ This codebase currently implements:
 - Blocked-page and CAPTCHA detection
 - Request ID middleware and structured application logging
 - Zillow adapter
+- Optional HasData-backed Zillow API integration
 - Realtor.com adapter
 - Redfin adapter
 - Fixture-based parsing tests
@@ -60,6 +61,20 @@ Install dependencies:
 uv sync --dev
 ```
 
+If you have a HasData key for Zillow property lookups, you can either export it:
+
+```bash
+export HASDATA_API_KEY=your_key_here
+```
+
+or place it in the local file the app reads by default:
+
+```text
+secrets/hasdata_api_key.txt
+```
+
+That file should contain only the raw key value on one line.
+
 Install the Playwright browser used by the fallback fetcher:
 
 ```bash
@@ -73,6 +88,8 @@ uv run uvicorn app.main:app --reload
 ```
 
 The app will start on `http://127.0.0.1:8000`.
+
+If you change the HasData key file or update provider code, restart `uvicorn` so the running app picks up the latest configuration.
 
 ## Useful commands
 
@@ -108,6 +125,14 @@ Example request:
 curl -X POST http://localhost:8000/api/v1/listings/extract \
   -H "Content-Type: application/json" \
   -d '{"url":"https://www.zillow.com/homedetails/example"}'
+```
+
+Example Zillow request using the HasData-backed path:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/listings/extract \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://www.zillow.com/homedetails/1620-Sunnybrook-Dr-Irving-TX-75061/27118489_zpid/"}'
 ```
 
 Example success shape:
@@ -160,6 +185,7 @@ Example error shape:
 
 - `ProviderRegistry` selects the adapter based on the incoming listing URL.
 - `ListingService` coordinates provider selection, static HTTP fetch, Playwright fallback, parsing, and response shaping.
+- `ZillowProvider` can bypass page fetching entirely by calling HasData's Zillow Property API when `HASDATA_API_KEY` is configured.
 - `PageFetcher` handles SSRF protections, redirects, size limits, and blocked-page detection.
 - `PlaywrightPageFetcher` is used only when static content is insufficient or provider parsing still lacks enough core fields.
 - Provider adapters prefer structured data first:
@@ -207,6 +233,11 @@ The API will be available at `http://localhost:8000`.
 - Fixture coverage currently includes one successful sample per provider plus partial-data scenarios.
 - Provider schemas will need continued maintenance as listing sites evolve.
 - This milestone does not persist listings or perform downstream investment analysis.
+
+## Troubleshooting
+
+- If Zillow returns CAPTCHA or access-blocked errors through live page fetching, configure `HASDATA_API_KEY` or `HASDATA_API_KEY_FILE` so the Zillow provider can use the HasData property endpoint instead.
+- If a direct HasData `curl` works but the app still reports an older auth or fetch error, restart the FastAPI server. The most common cause is a stale running `uvicorn` process that has not reloaded the newest code or key configuration.
 
 ## How to add another provider
 

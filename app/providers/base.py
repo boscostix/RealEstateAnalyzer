@@ -17,6 +17,11 @@ class ListingProvider(ABC):
     def can_handle(self, url: str) -> bool:
         """Return True when the provider can parse the URL."""
 
+    async def extract_from_url(self, url: str) -> PropertyExtractionResult | None:
+        """Optionally extract data without fetching the listing page first."""
+
+        return None
+
     @abstractmethod
     async def extract(self, url: str, page: FetchedPage) -> PropertyExtractionResult:
         """Extract normalized property data from a fetched page."""
