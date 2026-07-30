@@ -10,6 +10,7 @@ from app.api.routes import get_listing_service
 from app.exceptions import AccessBlockedError
 from app.main import app
 from app.models.extraction import FetchedPage
+from app.providers.zillow import ZillowProvider
 from app.services.listing_service import ListingService
 from app.services.provider_registry import ProviderRegistry
 
@@ -49,6 +50,16 @@ class BrokenService:
         raise RuntimeError("boom")
 
 
+class DisabledHasDataClient:
+    @property
+    def is_configured(self) -> bool:
+        return False
+
+
+def build_test_registry() -> ProviderRegistry:
+    return ProviderRegistry([ZillowProvider(hasdata_client=DisabledHasDataClient())])
+
+
 def override_with_service(service: object) -> None:
     app.dependency_overrides[get_listing_service] = lambda: service
 
@@ -59,7 +70,7 @@ def clear_overrides() -> None:
 
 def test_extract_listing_returns_provider_for_supported_url() -> None:
     service = ListingService(
-        registry=ProviderRegistry.default(),
+        registry=build_test_registry(),
         page_fetcher=FixtureFetcher(
             load_fixture("zillow_listing.html"),
             final_url="https://www.zillow.com/homedetails/example",
@@ -92,7 +103,7 @@ def test_extract_listing_returns_provider_for_supported_url() -> None:
 
 def test_extract_listing_uses_playwright_fallback_when_http_result_is_insufficient() -> None:
     service = ListingService(
-        registry=ProviderRegistry.default(),
+        registry=build_test_registry(),
         page_fetcher=FixtureFetcher(
             load_fixture("zillow_partial.html"),
             final_url="https://www.zillow.com/homedetails/example",
@@ -158,7 +169,7 @@ def test_extract_listing_rejects_ssrf_target() -> None:
 
 def test_extract_listing_returns_blocked_error() -> None:
     service = ListingService(
-        registry=ProviderRegistry.default(),
+        registry=build_test_registry(),
         page_fetcher=BlockedFetcher(),
         playwright_fetcher=FixtureFetcher(
             load_fixture("zillow_listing.html"),
