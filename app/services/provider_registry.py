@@ -5,7 +5,6 @@ from __future__ import annotations
 from urllib.parse import urlparse
 
 from app.providers.base import ListingProvider
-from app.providers.realtor import RealtorProvider
 from app.providers.redfin import RedfinProvider
 from app.providers.zillow import ZillowProvider
 
@@ -21,7 +20,6 @@ class ProviderRegistry:
         return cls(
             providers=[
                 ZillowProvider(),
-                RealtorProvider(),
                 RedfinProvider(),
             ]
         )

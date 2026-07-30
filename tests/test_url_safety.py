@@ -10,7 +10,6 @@ from app.utils.urls import validate_listing_url
     ("url"),
     [
         "https://www.zillow.com/homedetails/example",
-        "http://www.realtor.com/realestateandhomes-detail/example",
         "https://www.redfin.com/TX/Dallas/example/home/123",
     ],
 )

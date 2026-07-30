@@ -8,15 +8,6 @@ def test_registry_detects_zillow() -> None:
 
     assert registry.get_provider_name("https://www.zillow.com/homedetails/example") == "zillow"
 
-
-def test_registry_detects_realtor() -> None:
-    registry = ProviderRegistry.default()
-
-    assert registry.get_provider_name(
-        "https://www.realtor.com/realestateandhomes-detail/example"
-    ) == ("realtor")
-
-
 def test_registry_detects_redfin() -> None:
     registry = ProviderRegistry.default()
 

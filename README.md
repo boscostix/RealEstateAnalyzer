@@ -17,7 +17,6 @@ This codebase currently implements:
 - Request ID middleware and structured application logging
 - Zillow adapter
 - Optional HasData-backed Zillow API integration
-- Realtor.com adapter
 - Optional HasData-backed Redfin API integration
 - Redfin adapter
 - Fixture-based parsing tests
@@ -39,7 +38,7 @@ Not implemented yet:
 app/
 ├── api/                # FastAPI routes and dependency wiring
 ├── models/             # Pydantic request, response, and domain models
-├── providers/          # Zillow / Realtor / Redfin adapters
+├── providers/          # Zillow / Redfin adapters
 ├── services/           # Fetching, fallback, registry, orchestration
 ├── utils/              # URL and parsing helpers
 └── logging.py          # Request-id middleware and logging setup
@@ -187,7 +186,6 @@ Example error shape:
 ## Supported providers
 
 - Zillow
-- Realtor.com
 - Redfin
 
 ## Architecture
