@@ -175,3 +175,16 @@ class ResearchTimeoutError(AppError):
     message = "A research provider timed out."
     status_code = 504
     retryable = True
+
+
+class PublicRecordsUnavailableError(AppError):
+    code = "public_records_unavailable"
+    message = "No public-records provider could complete the request."
+    status_code = 502
+    retryable = True
+
+
+class PublicRecordsNotFoundError(AppError):
+    code = "public_records_not_found"
+    message = "No public records were found for the property."
+    status_code = 404

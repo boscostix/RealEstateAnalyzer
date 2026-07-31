@@ -5,6 +5,7 @@ import os
 from fastapi import FastAPI
 
 from app.api.analysis_routes import router as analysis_router
+from app.api.research_routes import router as research_router
 from app.api.routes import add_exception_handlers, router
 from app.logging import add_middleware, configure_logging
 
@@ -21,3 +22,4 @@ add_middleware(app)
 add_exception_handlers(app)
 app.include_router(router)
 app.include_router(analysis_router)
+app.include_router(research_router)
