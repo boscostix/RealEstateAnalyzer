@@ -142,3 +142,36 @@ class UnsolvableMaximumOfferError(AppError):
     code = "unsolvable_maximum_offer_target"
     message = "A maximum-offer target could not be solved."
     status_code = 422
+
+
+class ResearchProviderError(AppError):
+    code = "research_provider_error"
+    message = "A research provider failed."
+    status_code = 502
+    retryable = True
+
+
+class ResearchConfigurationError(AppError):
+    code = "research_configuration_error"
+    message = "Research configuration is invalid."
+    status_code = 500
+
+
+class ResearchCacheError(AppError):
+    code = "research_cache_error"
+    message = "A research cache operation failed."
+    status_code = 500
+    retryable = True
+
+
+class ResearchValidationError(AppError):
+    code = "research_validation_error"
+    message = "Research data failed validation."
+    status_code = 422
+
+
+class ResearchTimeoutError(AppError):
+    code = "research_timeout"
+    message = "A research provider timed out."
+    status_code = 504
+    retryable = True
