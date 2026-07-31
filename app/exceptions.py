@@ -188,3 +188,17 @@ class PublicRecordsNotFoundError(AppError):
     code = "public_records_not_found"
     message = "No public records were found for the property."
     status_code = 404
+
+
+class SalesCompsUnavailableError(AppError):
+    code = "sales_comps_unavailable"
+    message = "No sales comparable providers could complete the request."
+    status_code = 502
+    retryable = True
+
+
+class RentalCompsUnavailableError(AppError):
+    code = "rental_comps_unavailable"
+    message = "No rental comparable providers could complete the request."
+    status_code = 502
+    retryable = True
