@@ -11,10 +11,15 @@ from app.models.comparables import (
     SalesCompsResearchRequest,
     SalesCompsResearchResponse,
 )
+from app.models.neighborhood import (
+    NeighborhoodResearchRequest,
+    NeighborhoodResearchResponse,
+)
 from app.models.public_records import (
     PublicRecordsResearchRequest,
     PublicRecordsResearchResponse,
 )
+from app.services.neighborhood_service import NeighborhoodService
 from app.services.public_records_service import PublicRecordsService
 from app.services.rental_comps_service import RentalCompsService
 from app.services.sales_comps_service import SalesCompsService
@@ -41,6 +46,13 @@ def get_rental_comps_service() -> RentalCompsService:
 
 
 rental_comps_service_dependency = Depends(get_rental_comps_service)
+
+
+def get_neighborhood_service() -> NeighborhoodService:
+    return NeighborhoodService()
+
+
+neighborhood_service_dependency = Depends(get_neighborhood_service)
 
 
 @router.post(
@@ -110,6 +122,30 @@ async def research_rental_comps(
         None if response.result is None else response.result.provider,
         None if response.result is None else response.result.metadata.cache_status,
         0 if response.result is None else response.result.data.summary.comparable_count,
+        int((time.perf_counter() - started_at) * 1000),
+    )
+    return response
+
+
+@router.post(
+    "/api/v1/research/neighborhood",
+    response_model=NeighborhoodResearchResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def research_neighborhood(
+    request: Request,
+    payload: NeighborhoodResearchRequest,
+    service: NeighborhoodService = neighborhood_service_dependency,
+) -> NeighborhoodResearchResponse:
+    started_at = time.perf_counter()
+    response = await service.research(payload)
+    logger.info(
+        "neighborhood_completed request_id=%s provider=%s cache_status=%s "
+        "warning_count=%s duration_ms=%s",
+        getattr(request.state, "request_id", "unknown"),
+        None if response.result is None else response.result.provider,
+        None if response.result is None else response.result.metadata.cache_status,
+        0 if response.result is None else len(response.result.metadata.warnings),
         int((time.perf_counter() - started_at) * 1000),
     )
     return response

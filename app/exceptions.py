@@ -202,3 +202,10 @@ class RentalCompsUnavailableError(AppError):
     message = "No rental comparable providers could complete the request."
     status_code = 502
     retryable = True
+
+
+class NeighborhoodUnavailableError(AppError):
+    code = "neighborhood_unavailable"
+    message = "No neighborhood providers could complete the request."
+    status_code = 502
+    retryable = True
