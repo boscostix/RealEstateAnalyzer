@@ -19,9 +19,14 @@ from app.models.public_records import (
     PublicRecordsResearchRequest,
     PublicRecordsResearchResponse,
 )
+from app.models.research_package import (
+    ResearchPackageRequest,
+    ResearchPackageResponse,
+)
 from app.services.neighborhood_service import NeighborhoodService
 from app.services.public_records_service import PublicRecordsService
 from app.services.rental_comps_service import RentalCompsService
+from app.services.research_orchestrator import ResearchOrchestrator
 from app.services.sales_comps_service import SalesCompsService
 
 router = APIRouter()
@@ -53,6 +58,13 @@ def get_neighborhood_service() -> NeighborhoodService:
 
 
 neighborhood_service_dependency = Depends(get_neighborhood_service)
+
+
+def get_research_orchestrator() -> ResearchOrchestrator:
+    return ResearchOrchestrator()
+
+
+research_orchestrator_dependency = Depends(get_research_orchestrator)
 
 
 @router.post(
@@ -146,6 +158,30 @@ async def research_neighborhood(
         None if response.result is None else response.result.provider,
         None if response.result is None else response.result.metadata.cache_status,
         0 if response.result is None else len(response.result.metadata.warnings),
+        int((time.perf_counter() - started_at) * 1000),
+    )
+    return response
+
+
+@router.post(
+    "/api/v1/research/package",
+    response_model=ResearchPackageResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def research_package(
+    request: Request,
+    payload: ResearchPackageRequest,
+    service: ResearchOrchestrator = research_orchestrator_dependency,
+) -> ResearchPackageResponse:
+    started_at = time.perf_counter()
+    response = await service.research(payload)
+    logger.info(
+        "research_package_completed request_id=%s completed_domains=%s failed_domains=%s "
+        "warning_count=%s duration_ms=%s",
+        getattr(request.state, "request_id", "unknown"),
+        0 if response.package is None else len(response.package.metadata.completed_domains),
+        0 if response.package is None else len(response.package.metadata.failed_domains),
+        0 if response.package is None else len(response.package.warnings),
         int((time.perf_counter() - started_at) * 1000),
     )
     return response
