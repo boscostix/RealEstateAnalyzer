@@ -32,6 +32,16 @@ from app.agent_research.models import (
     ResearchConflict,
     UnifiedAgentResearchPackage,
 )
+from app.agent_research.orchestration_models import (
+    AgentRunRecord,
+    AgentRunStatus,
+    AgentUsageSummary,
+    SpecialistWorkflowMetadata,
+    SpecialistWorkflowResponse,
+    SpecialistWorkflowResult,
+    WorkflowStatus,
+)
+from app.agent_research.orchestrator import SpecialistAgentOrchestrator
 from app.agent_research.prompts import SPECIALIST_PROMPTS, prompt_for_agent
 from app.agent_research.sdk import AgentRunnerProtocol, OpenAIAgentRunner
 from app.agent_research.services import (
@@ -60,10 +70,13 @@ __all__ = [
     "AgentFinding",
     "AgentResearchError",
     "AgentResearchOutput",
+    "AgentRunRecord",
+    "AgentRunStatus",
     "AgentRunContext",
     "AgentRunnerProtocol",
     "AgentRuntimeConfig",
     "AgentTracingConfig",
+    "AgentUsageSummary",
     "ComparableAgentInput",
     "ComparableAgentOutput",
     "ComparableAgentService",
@@ -86,8 +99,13 @@ __all__ = [
     "ResearchConflict",
     "ResearchServiceContainer",
     "SPECIALIST_PROMPTS",
+    "SpecialistAgentOrchestrator",
     "SpecialistAgentService",
+    "SpecialistWorkflowMetadata",
+    "SpecialistWorkflowResponse",
+    "SpecialistWorkflowResult",
     "UnifiedAgentResearchPackage",
+    "WorkflowStatus",
     "build_evidence_index",
     "build_comparable_agent_input",
     "build_listing_agent_input",

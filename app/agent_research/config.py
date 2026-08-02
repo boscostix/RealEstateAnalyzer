@@ -28,22 +28,30 @@ class AgentRuntimeConfig(BaseModel):
     prompt_version: str = PROMPT_VERSION
     max_turns: int = 6
     timeout_seconds: float = 30.0
+    workflow_timeout_seconds: float = 90.0
     max_parallel_agents: int = 4
     retry_attempts: int = 1
     tracing: AgentTracingConfig = Field(default_factory=AgentTracingConfig)
 
-    @field_validator("max_turns", "max_parallel_agents", "retry_attempts")
+    @field_validator("max_turns", "max_parallel_agents")
     @classmethod
     def validate_positive_ints(cls, value: int) -> int:
         if value < 1:
             raise ValueError("Runtime integer settings must be at least 1.")
         return value
 
-    @field_validator("timeout_seconds")
+    @field_validator("retry_attempts")
+    @classmethod
+    def validate_retry_attempts(cls, value: int) -> int:
+        if value < 0:
+            raise ValueError("retry_attempts must be 0 or greater.")
+        return value
+
+    @field_validator("timeout_seconds", "workflow_timeout_seconds")
     @classmethod
     def validate_timeout_seconds(cls, value: float) -> float:
         if value <= 0:
-            raise ValueError("timeout_seconds must be greater than 0.")
+            raise ValueError("timeout values must be greater than 0.")
         return value
 
     @classmethod
@@ -55,6 +63,9 @@ class AgentRuntimeConfig(BaseModel):
             prompt_version=os.getenv("OPENAI_AGENT_PROMPT_VERSION", PROMPT_VERSION),
             max_turns=int(os.getenv("OPENAI_AGENT_MAX_TURNS", "6")),
             timeout_seconds=float(os.getenv("OPENAI_AGENT_TIMEOUT_SECONDS", "30.0")),
+            workflow_timeout_seconds=float(
+                os.getenv("OPENAI_AGENT_WORKFLOW_TIMEOUT_SECONDS", "90.0")
+            ),
             max_parallel_agents=int(os.getenv("OPENAI_AGENT_MAX_PARALLEL_AGENTS", "4")),
             retry_attempts=int(os.getenv("OPENAI_AGENT_RETRY_ATTEMPTS", "1")),
             tracing=AgentTracingConfig(

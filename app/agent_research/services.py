@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import time
 from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
 
 from pydantic import BaseModel
 
@@ -16,6 +18,11 @@ from app.agent_research.exceptions import (
     AgentModelFailureError,
 )
 from app.agent_research.guardrails import validate_agent_output
+from app.agent_research.orchestration_models import (
+    AgentRunRecord,
+    AgentRunStatus,
+    AgentUsageSummary,
+)
 from app.agent_research.sdk import AgentRunnerProtocol, OpenAIAgentRunner
 from app.agent_research.specialist_models import (
     ComparableAgentInput,
@@ -56,10 +63,20 @@ class SpecialistAgentService[
         self._config = config or AgentRuntimeConfig.from_env()
 
     async def run(self, context: AgentRunContext) -> TOutput:
+        run_result = await self.run_with_record(context)
+        if run_result.output is None:
+            raise AgentModelFailureError(
+                message=run_result.record.error_message or "Agent run failed."
+            )
+        return run_result.output
+
+    async def run_with_record(self, context: AgentRunContext) -> ServiceRunResult[TOutput]:
         if not context.request_id:
             raise AgentConfigurationError(message="request_id is required for agent execution.")
 
         configure_agents_tracing(self._config)
+        started_perf = time.perf_counter()
+        started_at = datetime.now(UTC)
         built_input = await self._input_builder(context)
         agents = build_specialist_agents(self._config.model)
         agent = agents[self._agent_name]
@@ -73,19 +90,52 @@ class SpecialistAgentService[
             separators=(",", ":"),
         )
         try:
-            output = await self._runner.run(
+            artifacts = await self._runner.run_detailed(
                 agent=agent,
                 agent_input=agent_input,
                 context=context,
                 run_config=run_config,
                 output_type=self._output_type,
             )
-            validate_agent_output(agent_name=self._agent_name, output=output, context=context)
-            return output
+            validate_agent_output(
+                agent_name=self._agent_name,
+                output=artifacts.output,
+                context=context,
+            )
+            return ServiceRunResult(
+                output=artifacts.output,
+                record=AgentRunRecord(
+                    agent_name=self._agent_name,
+                    status=AgentRunStatus.COMPLETED,
+                    started_at=started_at,
+                    completed_at=datetime.now(UTC),
+                    duration_ms=int((time.perf_counter() - started_perf) * 1000),
+                    output_available=True,
+                    usage=AgentUsageSummary(
+                        requests=artifacts.usage.requests,
+                        input_tokens=artifacts.usage.input_tokens,
+                        output_tokens=artifacts.usage.output_tokens,
+                        total_tokens=artifacts.usage.total_tokens,
+                    ),
+                    trace_metadata={
+                        "request_id": context.request_id,
+                        "analysis_id": context.analysis_id or "",
+                        "prompt_version": context.agent_config.prompt_version,
+                    },
+                ),
+            )
         except AgentGuardrailFailureError:
             raise
         except Exception as exc:
             raise AgentModelFailureError(message=str(exc)) from exc
+
+
+class ServiceRunResult[TOutput]:
+    """Specialist-agent service result with an explicit run record."""
+
+    def __init__(self, *, output: TOutput | None, record: AgentRunRecord) -> None:
+        self.output = output
+        self.record = record
 
 
 class ListingAgentService(SpecialistAgentService[ListingAgentInput, ListingAgentOutput]):

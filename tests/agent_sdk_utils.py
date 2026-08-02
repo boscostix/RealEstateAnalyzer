@@ -5,9 +5,12 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from decimal import Decimal
 
+from agents.usage import Usage
+
 from app.agent_research.config import AgentRuntimeConfig
 from app.agent_research.context import AgentRunContext, ResearchServiceContainer
 from app.agent_research.models import AgentExecutionMetadata, AgentResearchOutput
+from app.agent_research.sdk import AgentRunArtifacts
 from app.agent_research.specialist_models import (
     ComparableAgentOutput,
     ListingAgentOutput,
@@ -123,8 +126,11 @@ def make_neighborhood_agent_output() -> NeighborhoodAgentOutput:
 class StubAgentRunner:
     """Simple agent runner stub that records the last invocation."""
 
-    def __init__(self, output: object) -> None:
+    def __init__(self, output: object, *, usage: Usage | None = None) -> None:
         self.output = output
+        self.usage = usage or Usage(
+            requests=1, input_tokens=100, output_tokens=50, total_tokens=150
+        )
         self.calls: list[dict[str, object]] = []
 
     async def run(
@@ -146,6 +152,28 @@ class StubAgentRunner:
             }
         )
         return self.output
+
+    async def run_detailed(
+        self,
+        *,
+        agent: object,
+        agent_input: str,
+        context: AgentRunContext,
+        run_config: object,
+        output_type: type[object],
+    ) -> AgentRunArtifacts[object]:
+        await self.run(
+            agent=agent,
+            agent_input=agent_input,
+            context=context,
+            run_config=run_config,
+            output_type=output_type,
+        )
+        return AgentRunArtifacts(
+            output=self.output,
+            usage=self.usage,
+            response_count=1,
+        )
 
 
 def make_execution_metadata() -> AgentExecutionMetadata:
