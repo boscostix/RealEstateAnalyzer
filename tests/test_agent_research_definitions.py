@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from app.agent_research.definitions import AGENT_DEFINITIONS, build_specialist_agents
 from app.agent_research.models import AgentResearchOutput
+from app.agent_research.tools import tools_for_agent
 from app.agent_research.versioning import AgentName
 
 
@@ -20,6 +21,7 @@ def test_build_specialist_agents_returns_all_expected_agents() -> None:
     for agent in agents.values():
         assert agent.output_type is AgentResearchOutput
         assert agent.model == "gpt-5-mini"
+        assert len(agent.tools) >= 1
 
 
 def test_agent_definitions_include_prompt_safety_language() -> None:
@@ -28,3 +30,9 @@ def test_agent_definitions_include_prompt_safety_language() -> None:
     )
 
     assert "Do not invent facts" in listing_definition.instruction
+
+
+def test_tools_for_agent_returns_curated_tool_sets() -> None:
+    assert len(tools_for_agent(AgentName.LISTING)) == 3
+    assert len(tools_for_agent(AgentName.PUBLIC_RECORDS)) == 4
+    assert len(tools_for_agent(AgentName.COMPARABLE)) == 3

@@ -8,6 +8,7 @@ from agents import Agent, ModelSettings
 
 from app.agent_research.context import AgentRunContext
 from app.agent_research.models import AgentResearchOutput
+from app.agent_research.tools import tools_for_agent
 from app.agent_research.versioning import (
     PROMPT_VERSION,
     AgentName,
@@ -92,6 +93,7 @@ def build_specialist_agents(config_model: str) -> dict[AgentName, Agent[AgentRun
             output_type=AgentResearchOutput,
             model=config_model,
             model_settings=ModelSettings(temperature=0),
+            tools=list(tools_for_agent(definition.name)),
         )
     return agents
 

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.agent_research.config import AgentRuntimeConfig
+from app.models.extraction import PropertyExtractionResult
 from app.models.research_package import ResearchPackage
 from app.models.underwriting import UnderwritingAnalysis
 from app.models.verification import VerifiedPropertySnapshot
@@ -30,6 +31,7 @@ class AgentRunContext:
     request_id: str
     analysis_id: str | None
     verified_property: VerifiedPropertySnapshot
+    listing_extraction: PropertyExtractionResult | None
     underwriting_result: UnderwritingAnalysis | None
     research_package: ResearchPackage
     research_services: ResearchServiceContainer
