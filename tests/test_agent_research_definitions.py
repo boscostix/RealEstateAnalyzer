@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 from app.agent_research.definitions import AGENT_DEFINITIONS, build_specialist_agents
-from app.agent_research.models import AgentResearchOutput
+from app.agent_research.specialist_models import (
+    ComparableAgentOutput,
+    ListingAgentOutput,
+    NeighborhoodAgentOutput,
+    PublicRecordsAgentOutput,
+)
 from app.agent_research.tools import tools_for_agent
 from app.agent_research.versioning import AgentName
 
@@ -18,10 +23,15 @@ def test_build_specialist_agents_returns_all_expected_agents() -> None:
         AgentName.NEIGHBORHOOD,
         AgentName.PROPERTY_RISK,
     }
-    for agent in agents.values():
-        assert agent.output_type is AgentResearchOutput
+    assert agents[AgentName.LISTING].output_type is ListingAgentOutput
+    assert agents[AgentName.PUBLIC_RECORDS].output_type is PublicRecordsAgentOutput
+    assert agents[AgentName.COMPARABLE].output_type is ComparableAgentOutput
+    assert agents[AgentName.NEIGHBORHOOD].output_type is NeighborhoodAgentOutput
+    for name, agent in agents.items():
         assert agent.model == "gpt-5-mini"
         assert len(agent.tools) >= 1
+        if name != AgentName.PROPERTY_RISK:
+            assert len(agent.output_guardrails) >= 1
 
 
 def test_agent_definitions_include_prompt_safety_language() -> None:

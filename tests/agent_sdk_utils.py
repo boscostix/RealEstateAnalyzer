@@ -8,6 +8,12 @@ from decimal import Decimal
 from app.agent_research.config import AgentRuntimeConfig
 from app.agent_research.context import AgentRunContext, ResearchServiceContainer
 from app.agent_research.models import AgentExecutionMetadata, AgentResearchOutput
+from app.agent_research.specialist_models import (
+    ComparableAgentOutput,
+    ListingAgentOutput,
+    NeighborhoodAgentOutput,
+    PublicRecordsAgentOutput,
+)
 from app.agent_research.versioning import WORKFLOW_NAME, WORKFLOW_VERSION
 from app.models.comparables import (
     RentalComparableRecord,
@@ -85,9 +91,61 @@ def make_agent_output(agent_name: str = "listing_agent") -> AgentResearchOutput:
         conflicts=[],
         missing_information=["roof age"],
         due_diligence_questions=["When was the roof last replaced?"],
-        sources_used=["listing_source_1"],
+        sources_used=[],
         warnings=[],
     )
+
+
+def make_listing_agent_output() -> ListingAgentOutput:
+    return ListingAgentOutput.model_validate(
+        make_agent_output("listing_agent").model_dump(mode="python")
+    )
+
+
+def make_public_records_agent_output() -> PublicRecordsAgentOutput:
+    return PublicRecordsAgentOutput.model_validate(
+        make_agent_output("public_records_agent").model_dump(mode="python")
+    )
+
+
+def make_comparable_agent_output() -> ComparableAgentOutput:
+    return ComparableAgentOutput.model_validate(
+        make_agent_output("comparable_agent").model_dump(mode="python")
+    )
+
+
+def make_neighborhood_agent_output() -> NeighborhoodAgentOutput:
+    return NeighborhoodAgentOutput.model_validate(
+        make_agent_output("neighborhood_agent").model_dump(mode="python")
+    )
+
+
+class StubAgentRunner:
+    """Simple agent runner stub that records the last invocation."""
+
+    def __init__(self, output: object) -> None:
+        self.output = output
+        self.calls: list[dict[str, object]] = []
+
+    async def run(
+        self,
+        *,
+        agent: object,
+        agent_input: str,
+        context: AgentRunContext,
+        run_config: object,
+        output_type: type[object],
+    ) -> object:
+        self.calls.append(
+            {
+                "agent": agent,
+                "agent_input": agent_input,
+                "context": context,
+                "run_config": run_config,
+                "output_type": output_type,
+            }
+        )
+        return self.output
 
 
 def make_execution_metadata() -> AgentExecutionMetadata:

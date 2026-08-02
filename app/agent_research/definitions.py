@@ -7,10 +7,17 @@ from dataclasses import dataclass
 from agents import Agent, ModelSettings
 
 from app.agent_research.context import AgentRunContext
+from app.agent_research.guardrails import guardrails_for_agent
 from app.agent_research.models import AgentResearchOutput
+from app.agent_research.prompts import prompt_for_agent
+from app.agent_research.specialist_models import (
+    ComparableAgentOutput,
+    ListingAgentOutput,
+    NeighborhoodAgentOutput,
+    PublicRecordsAgentOutput,
+)
 from app.agent_research.tools import tools_for_agent
 from app.agent_research.versioning import (
-    PROMPT_VERSION,
     AgentName,
     build_agent_version,
 )
@@ -80,22 +87,32 @@ AGENT_DEFINITIONS: tuple[AgentDefinition, ...] = (
 def build_specialist_agents(config_model: str) -> dict[AgentName, Agent[AgentRunContext]]:
     """Create the specialist agents used by later orchestration phases."""
 
+    output_types: dict[AgentName, type[AgentResearchOutput]] = {
+        AgentName.LISTING: ListingAgentOutput,
+        AgentName.PUBLIC_RECORDS: PublicRecordsAgentOutput,
+        AgentName.COMPARABLE: ComparableAgentOutput,
+        AgentName.NEIGHBORHOOD: NeighborhoodAgentOutput,
+        AgentName.PROPERTY_RISK: AgentResearchOutput,
+    }
     agents: dict[AgentName, Agent[AgentRunContext]] = {}
     for definition in AGENT_DEFINITIONS:
+        prompt = prompt_for_agent(definition.name)
         agents[definition.name] = Agent[AgentRunContext](
             name=definition.name,
             instructions=(
                 f"{definition.instruction} "
-                f"Return only the strict AgentResearchOutput schema. "
+                f"{prompt.system_instructions} "
+                f"Return only the strict structured output schema for this agent. "
                 f"Agent version: {build_agent_version(definition.name)}. "
-                f"Prompt version: {PROMPT_VERSION}."
+                f"Prompt version: {prompt.prompt_version}."
             ),
-            output_type=AgentResearchOutput,
+            output_type=output_types[definition.name],
             model=config_model,
             model_settings=ModelSettings(temperature=0),
             tools=list(tools_for_agent(definition.name)),
+            output_guardrails=guardrails_for_agent(definition.name),
         )
     return agents
 
 
-__all__ = ["AGENT_DEFINITIONS", "PROMPT_VERSION", "build_specialist_agents"]
+__all__ = ["AGENT_DEFINITIONS", "build_specialist_agents"]
