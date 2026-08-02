@@ -19,3 +19,13 @@ def test_neighborhood_prompt_contains_fair_housing_restrictions() -> None:
 
     assert "protected characteristics" in prompt.system_instructions
     assert "Do not recommend where a person should or should not live" in prompt.system_instructions
+
+
+def test_property_risk_prompt_requires_qualified_language_and_underwriting_support() -> None:
+    prompt = prompt_for_agent(AgentName.PROPERTY_RISK)
+
+    assert "Physical-condition claims must stay qualified" in prompt.system_instructions
+    assert (
+        "Financial-fragility claims must reference deterministic underwriting"
+        in prompt.system_instructions
+    )

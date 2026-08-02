@@ -2,14 +2,22 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 from app.agent_research.context import AgentRunContext
 from app.agent_research.evidence import build_property_key
 from app.agent_research.exceptions import MissingAgentInputError
+from app.agent_research.models import DuplicateFindingGroup, ResearchConflict
+from app.agent_research.risk_models import PropertyRiskAgentInput, RiskStressTestSummary
 from app.agent_research.specialist_models import (
     ComparableAgentInput,
+    ComparableAgentOutput,
     ListingAgentInput,
+    ListingAgentOutput,
     NeighborhoodAgentInput,
+    NeighborhoodAgentOutput,
     PublicRecordsAgentInput,
+    PublicRecordsAgentOutput,
 )
 from app.agent_research.tools import (
     get_flood_research_impl,
@@ -100,4 +108,52 @@ async def build_neighborhood_agent_input(context: AgentRunContext) -> Neighborho
         neighborhood_summary=neighborhood.data,
         school_research=schools.data,
         flood_research=flood.data,
+    )
+
+
+def _risk_stress_tests(context: AgentRunContext) -> list[RiskStressTestSummary]:
+    if context.underwriting_result is None:
+        return []
+    return [
+        RiskStressTestSummary(
+            identifier=stress_test.identifier,
+            description=stress_test.description,
+            change_in_monthly_cash_flow=stress_test.change_in_monthly_cash_flow,
+            additional_cash_required=stress_test.additional_cash_required,
+            cash_flow_remains_positive=stress_test.cash_flow_remains_positive,
+            stressed_dscr=stress_test.stressed_metrics.dscr,
+            warnings=stress_test.warnings,
+        )
+        for stress_test in context.underwriting_result.stress_tests
+    ]
+
+
+async def build_property_risk_agent_input(
+    context: AgentRunContext,
+    *,
+    listing_analysis: ListingAgentOutput,
+    public_records_analysis: PublicRecordsAgentOutput,
+    comparable_analysis: ComparableAgentOutput,
+    neighborhood_analysis: NeighborhoodAgentOutput,
+    conflicts: list[ResearchConflict],
+    duplicate_findings: list[DuplicateFindingGroup],
+    upstream_data_confidence: Decimal,
+    upstream_warnings: list[str] | None = None,
+) -> PropertyRiskAgentInput:
+    underwriting = await get_underwriting_summary_impl(context)
+    return PropertyRiskAgentInput(
+        property_key=build_property_key(context.verified_property),
+        request_id=context.request_id,
+        analysis_id=context.analysis_id,
+        verified_property=context.verified_property,
+        listing_analysis=listing_analysis,
+        public_records_analysis=public_records_analysis,
+        comparable_analysis=comparable_analysis,
+        neighborhood_analysis=neighborhood_analysis,
+        conflicts=conflicts,
+        duplicate_findings=duplicate_findings,
+        upstream_data_confidence=upstream_data_confidence,
+        underwriting_summary=underwriting.data,
+        stress_tests=_risk_stress_tests(context),
+        upstream_warnings=upstream_warnings or [],
     )

@@ -91,4 +91,5 @@ class GuardrailReport(AgentModel):
     invalid_conflict_sources: list[str] = Field(default_factory=list)
     unsupported_material_findings: list[str] = Field(default_factory=list)
     neighborhood: NeighborhoodGuardrailReport | None = None
+    risk: dict[str, list[str]] | None = None
     maximum_confidence_applied: Decimal | None = None

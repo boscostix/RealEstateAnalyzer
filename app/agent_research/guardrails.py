@@ -15,6 +15,7 @@ from app.agent_research.evidence import (
 )
 from app.agent_research.exceptions import AgentGuardrailFailureError
 from app.agent_research.models import AgentResearchOutput, FindingSeverity
+from app.agent_research.risk_models import PropertyRiskAgentOutput, RiskCategory
 from app.agent_research.specialist_models import (
     GuardrailReport,
     NeighborhoodAgentOutput,
@@ -63,6 +64,34 @@ FAIR_HOUSING_PHRASES = (
     "ideal for young professionals",
 )
 
+RISK_QUALIFIERS = (
+    "may",
+    "could",
+    "possible",
+    "possibly",
+    "potential",
+    "potentially",
+    "appears",
+    "appears to",
+    "suggests",
+    "not verified",
+    "not confirmed",
+    "requires inspection",
+    "subject to inspection",
+    "further review",
+)
+
+DIAGNOSTIC_PHRASES = (
+    "is failing",
+    "has failed",
+    "is defective",
+    "has mold",
+    "contains asbestos",
+    "has structural damage",
+    "is unsafe",
+    "needs full replacement",
+)
+
 
 def _collect_output_text(output: AgentResearchOutput) -> str:
     parts = [
@@ -83,6 +112,21 @@ def _collect_output_text(output: AgentResearchOutput) -> str:
         )
     for conflict in output.conflicts:
         parts.extend([conflict.field_or_topic, conflict.description, *conflict.values_or_claims])
+    if isinstance(output, PropertyRiskAgentOutput):
+        for risk in output.risk_findings:
+            parts.extend(
+                [
+                    risk.title,
+                    risk.summary,
+                    risk.significance,
+                    *risk.recommended_next_actions,
+                    *risk.missing_information,
+                ]
+            )
+        for item in output.inspection_priorities:
+            parts.extend([item.title, item.rationale])
+        for question in output.seller_questions:
+            parts.extend([question.question, question.rationale])
     return " ".join(part.lower() for part in parts if part)
 
 
@@ -110,6 +154,40 @@ def bounded_confidence_limit(output: AgentResearchOutput) -> Decimal:
     if evidence_count >= 1:
         return Decimal("0.85")
     return Decimal("0.60")
+
+
+def _risk_guardrail_report(output: PropertyRiskAgentOutput) -> dict[str, list[str]]:
+    unqualified_physical_risk_ids: list[str] = []
+    unsupported_financial_risk_ids: list[str] = []
+    diagnostic_claim_ids: list[str] = []
+
+    for risk in output.risk_findings:
+        combined_text = " ".join(
+            [
+                risk.title,
+                risk.summary,
+                risk.significance,
+                *risk.recommended_next_actions,
+            ]
+        ).lower()
+        if risk.category == RiskCategory.PHYSICAL_CONDITION:
+            if any(phrase in combined_text for phrase in DIAGNOSTIC_PHRASES):
+                diagnostic_claim_ids.append(risk.risk_id)
+            if not any(qualifier in combined_text for qualifier in RISK_QUALIFIERS):
+                unqualified_physical_risk_ids.append(risk.risk_id)
+        if risk.category == RiskCategory.FINANCIAL_FRAGILITY and not any(
+            evidence.source_type.value == "underwriting"
+            or evidence.source_id.endswith(":underwriting")
+            or (evidence.field_path or "").startswith("underwriting.")
+            for evidence in risk.evidence
+        ):
+            unsupported_financial_risk_ids.append(risk.risk_id)
+
+    return {
+        "unqualified_physical_risk_ids": unqualified_physical_risk_ids,
+        "unsupported_financial_risk_ids": unsupported_financial_risk_ids,
+        "diagnostic_claim_ids": diagnostic_claim_ids,
+    }
 
 
 def validate_agent_output(
@@ -152,6 +230,25 @@ def validate_agent_output(
     if output.overall_confidence > maximum_confidence:
         output.overall_confidence = maximum_confidence
 
+    if isinstance(output, PropertyRiskAgentOutput):
+        for risk in output.risk_findings:
+            try:
+                validate_evidence_references(risk.evidence, index)
+            except Exception as exc:
+                raise AgentGuardrailFailureError(message=str(exc)) from exc
+            if risk.confidence > maximum_confidence:
+                risk.confidence = maximum_confidence
+        for item in output.inspection_priorities:
+            try:
+                validate_evidence_references(item.evidence, index)
+            except Exception as exc:
+                raise AgentGuardrailFailureError(message=str(exc)) from exc
+        for question in output.seller_questions:
+            try:
+                validate_evidence_references(question.evidence, index)
+            except Exception as exc:
+                raise AgentGuardrailFailureError(message=str(exc)) from exc
+
     for source_id in output.sources_used:
         try:
             validate_source_ownership(source_id, index)
@@ -172,16 +269,36 @@ def validate_agent_output(
         )
 
     neighborhood_report: NeighborhoodGuardrailReport | None = None
+    risk_report: dict[str, list[str]] | None = None
     if agent_name == AgentName.NEIGHBORHOOD:
-        typed_output = output if isinstance(output, NeighborhoodAgentOutput) else None
-        if typed_output is None:
+        neighborhood_output = output if isinstance(output, NeighborhoodAgentOutput) else None
+        if neighborhood_output is None:
             raise AgentGuardrailFailureError(
                 message="Neighborhood agent output did not match the expected contract.",
             )
-        neighborhood_report = _fair_housing_report(typed_output)
+        neighborhood_report = _fair_housing_report(neighborhood_output)
         if neighborhood_report.blocked_terms or neighborhood_report.blocked_phrases:
             raise AgentGuardrailFailureError(
                 message="Neighborhood agent output violated fair-housing restrictions.",
+            )
+    if agent_name == AgentName.PROPERTY_RISK:
+        risk_output = output if isinstance(output, PropertyRiskAgentOutput) else None
+        if risk_output is None:
+            raise AgentGuardrailFailureError(
+                message="Property Risk agent output did not match the expected contract.",
+            )
+        risk_report = _risk_guardrail_report(risk_output)
+        if risk_report["unqualified_physical_risk_ids"]:
+            raise AgentGuardrailFailureError(
+                message="Property Risk agent output included unqualified physical-risk claims.",
+            )
+        if risk_report["unsupported_financial_risk_ids"]:
+            raise AgentGuardrailFailureError(
+                message="Property Risk financial-risk findings lacked underwriting evidence.",
+            )
+        if risk_report["diagnostic_claim_ids"]:
+            raise AgentGuardrailFailureError(
+                message="Property Risk agent output included unsupported defect diagnoses.",
             )
 
     return GuardrailReport(
@@ -190,6 +307,7 @@ def validate_agent_output(
         invalid_conflict_sources=invalid_conflict_sources,
         unsupported_material_findings=unsupported_material_findings,
         neighborhood=neighborhood_report,
+        risk=risk_report,
         maximum_confidence_applied=maximum_confidence,
     )
 
@@ -237,6 +355,7 @@ AGENT_OUTPUT_GUARDRAILS = {
         no_final_recommendations_guardrail,
         neighborhood_fair_housing_guardrail,
     ],
+    AgentName.PROPERTY_RISK: [no_final_recommendations_guardrail],
 }
 
 

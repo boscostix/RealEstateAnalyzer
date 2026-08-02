@@ -10,6 +10,7 @@ from agents.usage import Usage
 from app.agent_research.config import AgentRuntimeConfig
 from app.agent_research.context import AgentRunContext, ResearchServiceContainer
 from app.agent_research.models import AgentExecutionMetadata, AgentResearchOutput
+from app.agent_research.risk_models import PropertyRiskAgentOutput
 from app.agent_research.sdk import AgentRunArtifacts
 from app.agent_research.specialist_models import (
     ComparableAgentOutput,
@@ -120,6 +121,15 @@ def make_comparable_agent_output() -> ComparableAgentOutput:
 def make_neighborhood_agent_output() -> NeighborhoodAgentOutput:
     return NeighborhoodAgentOutput.model_validate(
         make_agent_output("neighborhood_agent").model_dump(mode="python")
+    )
+
+
+def make_property_risk_output() -> PropertyRiskAgentOutput:
+    return PropertyRiskAgentOutput(
+        **make_agent_output("property_risk_agent").model_dump(mode="python"),
+        risk_findings=[],
+        inspection_priorities=[],
+        seller_questions=[],
     )
 
 

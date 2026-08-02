@@ -10,6 +10,7 @@ from app.agent_research.context import AgentRunContext
 from app.agent_research.guardrails import guardrails_for_agent
 from app.agent_research.models import AgentResearchOutput
 from app.agent_research.prompts import prompt_for_agent
+from app.agent_research.risk_models import PropertyRiskAgentOutput
 from app.agent_research.specialist_models import (
     ComparableAgentOutput,
     ListingAgentOutput,
@@ -92,7 +93,7 @@ def build_specialist_agents(config_model: str) -> dict[AgentName, Agent[AgentRun
         AgentName.PUBLIC_RECORDS: PublicRecordsAgentOutput,
         AgentName.COMPARABLE: ComparableAgentOutput,
         AgentName.NEIGHBORHOOD: NeighborhoodAgentOutput,
-        AgentName.PROPERTY_RISK: AgentResearchOutput,
+        AgentName.PROPERTY_RISK: PropertyRiskAgentOutput,
     }
     agents: dict[AgentName, Agent[AgentRunContext]] = {}
     for definition in AGENT_DEFINITIONS:

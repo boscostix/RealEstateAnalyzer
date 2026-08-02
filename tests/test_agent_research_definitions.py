@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from app.agent_research.definitions import AGENT_DEFINITIONS, build_specialist_agents
+from app.agent_research.risk_models import PropertyRiskAgentOutput
 from app.agent_research.specialist_models import (
     ComparableAgentOutput,
     ListingAgentOutput,
@@ -27,11 +28,11 @@ def test_build_specialist_agents_returns_all_expected_agents() -> None:
     assert agents[AgentName.PUBLIC_RECORDS].output_type is PublicRecordsAgentOutput
     assert agents[AgentName.COMPARABLE].output_type is ComparableAgentOutput
     assert agents[AgentName.NEIGHBORHOOD].output_type is NeighborhoodAgentOutput
-    for name, agent in agents.items():
+    assert agents[AgentName.PROPERTY_RISK].output_type is PropertyRiskAgentOutput
+    for _name, agent in agents.items():
         assert agent.model == "gpt-5-mini"
         assert len(agent.tools) >= 1
-        if name != AgentName.PROPERTY_RISK:
-            assert len(agent.output_guardrails) >= 1
+        assert len(agent.output_guardrails) >= 1
 
 
 def test_agent_definitions_include_prompt_safety_language() -> None:

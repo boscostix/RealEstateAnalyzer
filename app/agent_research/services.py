@@ -23,6 +23,7 @@ from app.agent_research.orchestration_models import (
     AgentRunStatus,
     AgentUsageSummary,
 )
+from app.agent_research.risk_models import PropertyRiskAgentInput, PropertyRiskAgentOutput
 from app.agent_research.sdk import AgentRunnerProtocol, OpenAIAgentRunner
 from app.agent_research.specialist_models import (
     ComparableAgentInput,
@@ -212,3 +213,92 @@ class NeighborhoodAgentService(
             runner=runner,
             config=config,
         )
+
+
+class PropertyRiskAgentService:
+    """Execution wrapper for the Property Risk Agent with explicit upstream inputs."""
+
+    def __init__(
+        self,
+        *,
+        runner: AgentRunnerProtocol | None = None,
+        config: AgentRuntimeConfig | None = None,
+    ) -> None:
+        self._runner = runner or OpenAIAgentRunner()
+        self._config = config or AgentRuntimeConfig.from_env()
+
+    async def run(
+        self,
+        context: AgentRunContext,
+        *,
+        built_input: PropertyRiskAgentInput,
+    ) -> PropertyRiskAgentOutput:
+        run_result = await self.run_with_record(context, built_input=built_input)
+        if run_result.output is None:
+            raise AgentModelFailureError(
+                message=run_result.record.error_message or "Agent run failed."
+            )
+        return run_result.output
+
+    async def run_with_record(
+        self,
+        context: AgentRunContext,
+        *,
+        built_input: PropertyRiskAgentInput,
+    ) -> ServiceRunResult[PropertyRiskAgentOutput]:
+        if not context.request_id:
+            raise AgentConfigurationError(message="request_id is required for agent execution.")
+
+        configure_agents_tracing(self._config)
+        started_perf = time.perf_counter()
+        started_at = datetime.now(UTC)
+        agents = build_specialist_agents(self._config.model)
+        agent = agents[AgentName.PROPERTY_RISK]
+        run_config = build_run_config(
+            self._config,
+            request_id=context.request_id,
+            group_id=context.analysis_id,
+        )
+        agent_input = json.dumps(
+            built_input.model_dump(mode="json"),
+            separators=(",", ":"),
+        )
+        try:
+            artifacts = await self._runner.run_detailed(
+                agent=agent,
+                agent_input=agent_input,
+                context=context,
+                run_config=run_config,
+                output_type=PropertyRiskAgentOutput,
+            )
+            validate_agent_output(
+                agent_name=AgentName.PROPERTY_RISK,
+                output=artifacts.output,
+                context=context,
+            )
+            return ServiceRunResult(
+                output=artifacts.output,
+                record=AgentRunRecord(
+                    agent_name=AgentName.PROPERTY_RISK,
+                    status=AgentRunStatus.COMPLETED,
+                    started_at=started_at,
+                    completed_at=datetime.now(UTC),
+                    duration_ms=int((time.perf_counter() - started_perf) * 1000),
+                    output_available=True,
+                    usage=AgentUsageSummary(
+                        requests=artifacts.usage.requests,
+                        input_tokens=artifacts.usage.input_tokens,
+                        output_tokens=artifacts.usage.output_tokens,
+                        total_tokens=artifacts.usage.total_tokens,
+                    ),
+                    trace_metadata={
+                        "request_id": context.request_id,
+                        "analysis_id": context.analysis_id or "",
+                        "prompt_version": context.agent_config.prompt_version,
+                    },
+                ),
+            )
+        except AgentGuardrailFailureError:
+            raise
+        except Exception as exc:
+            raise AgentModelFailureError(message=str(exc)) from exc

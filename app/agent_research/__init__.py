@@ -45,11 +45,23 @@ from app.agent_research.orchestration_models import (
 )
 from app.agent_research.orchestrator import SpecialistAgentOrchestrator
 from app.agent_research.prompts import SPECIALIST_PROMPTS, prompt_for_agent
+from app.agent_research.risk_models import (
+    InspectionPriority,
+    InspectionPriorityItem,
+    PropertyRiskAgentInput,
+    PropertyRiskAgentOutput,
+    RiskCategory,
+    RiskFinding,
+    RiskStressTestSummary,
+    SellerQuestion,
+    SellerQuestionPriority,
+)
 from app.agent_research.sdk import AgentRunnerProtocol, OpenAIAgentRunner
 from app.agent_research.services import (
     ComparableAgentService,
     ListingAgentService,
     NeighborhoodAgentService,
+    PropertyRiskAgentService,
     PublicRecordsAgentService,
     SpecialistAgentService,
 )
@@ -90,6 +102,8 @@ __all__ = [
     "EvidenceIndex",
     "EvidenceReference",
     "FindingSeverity",
+    "InspectionPriority",
+    "InspectionPriorityItem",
     "ListingAgentInput",
     "ListingAgentOutput",
     "ListingAgentService",
@@ -97,12 +111,20 @@ __all__ = [
     "NeighborhoodAgentOutput",
     "NeighborhoodAgentService",
     "OpenAIAgentRunner",
+    "PropertyRiskAgentInput",
+    "PropertyRiskAgentOutput",
+    "PropertyRiskAgentService",
     "PublicRecordsAgentInput",
     "PublicRecordsAgentOutput",
     "PublicRecordsAgentService",
+    "RiskCategory",
+    "RiskFinding",
+    "RiskStressTestSummary",
     "ResearchConflict",
     "ResearchServiceContainer",
     "SPECIALIST_PROMPTS",
+    "SellerQuestion",
+    "SellerQuestionPriority",
     "SpecialistAgentOrchestrator",
     "SpecialistAgentService",
     "SpecialistWorkflowMetadata",
