@@ -11,4 +11,3 @@ def test_safe_divide_returns_none_for_zero_denominator() -> None:
 
 def test_safe_divide_returns_decimal_for_nonzero_denominator() -> None:
     assert safe_divide(Decimal("10"), Decimal("2")) == Decimal("5")
-

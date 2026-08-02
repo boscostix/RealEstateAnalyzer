@@ -47,9 +47,7 @@ def test_public_records_endpoint_returns_structured_result() -> None:
     try:
         response = client.post(
             "/api/v1/research/public-records",
-            json=PublicRecordsResearchRequest(property=build_property()).model_dump(
-                mode="json"
-            ),
+            json=PublicRecordsResearchRequest(property=build_property()).model_dump(mode="json"),
         )
     finally:
         app.dependency_overrides.clear()

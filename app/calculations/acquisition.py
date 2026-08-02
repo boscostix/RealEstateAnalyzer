@@ -17,4 +17,3 @@ def resolve_amount_or_percent(
     if percent is not None:
         return money(base_amount * percent_to_decimal(percent))
     return Decimal("0.00")
-

@@ -83,8 +83,7 @@ def _similarity_components(
         components.append(
             max(
                 Decimal("0"),
-                Decimal("1")
-                - (Decimal(abs(subject_sqft - square_feet)) / Decimal(subject_sqft)),
+                Decimal("1") - (Decimal(abs(subject_sqft - square_feet)) / Decimal(subject_sqft)),
             )
         )
     subject_beds = _subject_bedrooms(property_snapshot)
@@ -104,11 +103,7 @@ def _similarity_components(
             )
         )
     subject_year = _subject_year_built(property_snapshot)
-    if (
-        subject_year is not None
-        and year_built is not None
-        and max_year_built_delta > 0
-    ):
+    if subject_year is not None and year_built is not None and max_year_built_delta > 0:
         components.append(
             max(
                 Decimal("0"),
@@ -182,9 +177,7 @@ def filter_and_rank_sales_comps(
             and candidate.square_feet is not None
             and candidate.square_feet > 0
         ):
-            price_per_square_foot = money(
-                candidate.sold_price / Decimal(candidate.square_feet)
-            )
+            price_per_square_foot = money(candidate.sold_price / Decimal(candidate.square_feet))
         adjusted_ppsf = price_per_square_foot
         if price_per_square_foot is not None and candidate.sold_price is not None:
             adjustments = Decimal("0")
@@ -192,11 +185,7 @@ def filter_and_rank_sales_comps(
                 adjustments += (subject_beds - candidate.bedrooms) * Decimal("5000")
             if subject_baths is not None and candidate.bathrooms is not None:
                 adjustments += (subject_baths - candidate.bathrooms) * Decimal("7500")
-            if (
-                subject_sqft is not None
-                and candidate.square_feet is not None
-                and subject_sqft > 0
-            ):
+            if subject_sqft is not None and candidate.square_feet is not None and subject_sqft > 0:
                 adjustments += (
                     Decimal(subject_sqft - candidate.square_feet)
                     * price_per_square_foot
@@ -214,9 +203,7 @@ def filter_and_rank_sales_comps(
             max_distance_miles=filters.max_distance_miles,
             max_year_built_delta=filters.max_year_built_delta,
         )
-        similarity = ratio(
-            sum(components, start=Decimal("0")) / Decimal(len(components))
-        )
+        similarity = ratio(sum(components, start=Decimal("0")) / Decimal(len(components)))
         matched.append(
             candidate.model_copy(
                 update={
@@ -248,9 +235,7 @@ def filter_and_rank_sales_comps(
         median_adjusted_price_per_square_foot=_median(adjusted_ppsf_values),
         sold_price_range=_value_range(sold_prices),
     )
-    confidence = _average_confidence(
-        [item.similarity_score or Decimal("0") for item in ranked]
-    )
+    confidence = _average_confidence([item.similarity_score or Decimal("0") for item in ranked])
     return ranked, summary, confidence
 
 
@@ -307,9 +292,7 @@ def filter_and_rank_rental_comps(
             and candidate.square_feet is not None
             and candidate.square_feet > 0
         ):
-            rent_per_square_foot = money(
-                candidate.monthly_rent / Decimal(candidate.square_feet)
-            )
+            rent_per_square_foot = money(candidate.monthly_rent / Decimal(candidate.square_feet))
         components = _similarity_components(
             property_snapshot,
             distance_miles=candidate.distance_miles,
@@ -320,9 +303,7 @@ def filter_and_rank_rental_comps(
             max_distance_miles=filters.max_distance_miles,
             max_year_built_delta=filters.max_year_built_delta,
         )
-        similarity = ratio(
-            sum(components, start=Decimal("0")) / Decimal(len(components))
-        )
+        similarity = ratio(sum(components, start=Decimal("0")) / Decimal(len(components)))
         matched.append(
             candidate.model_copy(
                 update={
@@ -336,16 +317,12 @@ def filter_and_rank_rental_comps(
         key=lambda item: item.similarity_score or Decimal("0"),
         reverse=True,
     )[: filters.limit]
-    monthly_rents = [
-        item.monthly_rent for item in ranked if item.monthly_rent is not None
-    ]
+    monthly_rents = [item.monthly_rent for item in ranked if item.monthly_rent is not None]
     rent_psf_values = [
         item.rent_per_square_foot for item in ranked if item.rent_per_square_foot is not None
     ]
     occupancy_values = [
-        item.occupancy_indicator
-        for item in ranked
-        if item.occupancy_indicator is not None
+        item.occupancy_indicator for item in ranked if item.occupancy_indicator is not None
     ]
     summary = RentalCompsSummary(
         comparable_count=len(ranked),
@@ -357,7 +334,5 @@ def filter_and_rank_rental_comps(
         leased_count=sum(1 for item in ranked if item.rental_status == RentalStatus.LEASED),
         average_occupancy_indicator=_average(occupancy_values),
     )
-    confidence = _average_confidence(
-        [item.similarity_score or Decimal("0") for item in ranked]
-    )
+    confidence = _average_confidence([item.similarity_score or Decimal("0") for item in ranked])
     return ranked, summary, confidence

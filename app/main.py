@@ -14,8 +14,7 @@ app = FastAPI(
     title="Real Estate Analyzer",
     version="0.1.0",
     description=(
-        "Listing extraction, property verification, and deterministic "
-        "underwriting service."
+        "Listing extraction, property verification, and deterministic underwriting service."
     ),
 )
 add_middleware(app)

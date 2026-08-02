@@ -21,4 +21,3 @@ def calculate_monthly_payment(
     numerator = principal * monthly_rate
     denominator = Decimal("1") - (Decimal("1") + monthly_rate) ** Decimal(-total_payments)
     return money(numerator / denominator)
-

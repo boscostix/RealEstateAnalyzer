@@ -47,9 +47,7 @@ def test_neighborhood_endpoint_returns_structured_result() -> None:
     try:
         response = client.post(
             "/api/v1/research/neighborhood",
-            json=NeighborhoodResearchRequest(property=build_property()).model_dump(
-                mode="json"
-            ),
+            json=NeighborhoodResearchRequest(property=build_property()).model_dump(mode="json"),
         )
     finally:
         app.dependency_overrides.clear()

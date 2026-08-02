@@ -9,4 +9,3 @@ def safe_divide(numerator: Decimal, denominator: Decimal) -> Decimal | None:
     if denominator == 0:
         return None
     return numerator / denominator
-

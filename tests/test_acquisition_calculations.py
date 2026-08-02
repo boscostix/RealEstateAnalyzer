@@ -21,4 +21,3 @@ def test_resolve_amount_or_percent_uses_percentage_when_fixed_missing() -> None:
         Decimal("3"),
     )
     assert result == Decimal("3000.00")
-

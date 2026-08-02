@@ -36,12 +36,8 @@ class ResearchConfig(BaseModel):
                 ttl_seconds=int(os.getenv("RESEARCH_CACHE_TTL_SECONDS", "3600")),
             ),
             execution=ProviderExecutionConfig(
-                timeout_seconds=float(
-                    os.getenv("RESEARCH_PROVIDER_TIMEOUT_SECONDS", "10.0")
-                ),
+                timeout_seconds=float(os.getenv("RESEARCH_PROVIDER_TIMEOUT_SECONDS", "10.0")),
                 max_retries=int(os.getenv("RESEARCH_PROVIDER_MAX_RETRIES", "2")),
-                parallelism_limit=int(
-                    os.getenv("RESEARCH_PROVIDER_PARALLELISM_LIMIT", "4")
-                ),
+                parallelism_limit=int(os.getenv("RESEARCH_PROVIDER_PARALLELISM_LIMIT", "4")),
             ),
         )

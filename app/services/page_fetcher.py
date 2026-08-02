@@ -304,8 +304,7 @@ class PlaywrightPageFetcher:
                     except TimeoutError as exc:
                         raise FetchFailureError(
                             message=(
-                                "Timed out while navigating to the listing page "
-                                "in Playwright."
+                                "Timed out while navigating to the listing page in Playwright."
                             ),
                             retryable=True,
                         ) from exc

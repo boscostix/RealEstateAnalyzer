@@ -172,9 +172,7 @@ async def test_public_records_service_uses_provider_fallback() -> None:
         cache=InMemoryResearchCache(),
     )
 
-    response = await service.research(
-        PublicRecordsResearchRequest(property=build_property())
-    )
+    response = await service.research(PublicRecordsResearchRequest(property=build_property()))
 
     assert response.success is True
     assert response.result is not None

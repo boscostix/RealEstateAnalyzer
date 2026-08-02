@@ -27,8 +27,6 @@ def leasing_turnover_monthly(
 ) -> Decimal:
     leasing_fee = monthly_rent * percent_to_decimal(leasing_fee_percent)
     annual_turnover = (
-        Decimal("0")
-        if turnover_frequency_years == 0
-        else turnover_cost / turnover_frequency_years
+        Decimal("0") if turnover_frequency_years == 0 else turnover_cost / turnover_frequency_years
     )
     return money((leasing_fee + annual_turnover) / Decimal("12"))

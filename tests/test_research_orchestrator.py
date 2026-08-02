@@ -271,9 +271,7 @@ async def test_research_orchestrator_assembles_package_and_dedupes_citations() -
         neighborhood_service=StaticService(build_neighborhood_response()),
     )
 
-    response = await orchestrator.research(
-        ResearchPackageRequest(property=build_property())
-    )
+    response = await orchestrator.research(ResearchPackageRequest(property=build_property()))
 
     assert response.success is True
     assert response.package is not None
@@ -304,9 +302,7 @@ async def test_research_orchestrator_retries_retryable_errors_and_returns_partia
         ),
     )
 
-    response = await orchestrator.research(
-        ResearchPackageRequest(property=build_property())
-    )
+    response = await orchestrator.research(ResearchPackageRequest(property=build_property()))
 
     assert response.package is not None
     assert response.package.sales_comps is not None
@@ -331,9 +327,7 @@ async def test_research_orchestrator_records_timeout_as_warning() -> None:
         ),
     )
 
-    response = await orchestrator.research(
-        ResearchPackageRequest(property=build_property())
-    )
+    response = await orchestrator.research(ResearchPackageRequest(property=build_property()))
 
     assert response.package is not None
     assert response.package.neighborhood is None

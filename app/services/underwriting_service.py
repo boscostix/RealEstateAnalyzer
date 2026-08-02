@@ -306,9 +306,7 @@ class UnderwritingService:
                 assumptions.expenses.maintenance_percent,
             )
             if assumptions.expenses.maintenance_percent is not None
-            else monthly_from_annual(
-                money(assumptions.expenses.maintenance_annual or Decimal("0"))
-            )
+            else monthly_from_annual(money(assumptions.expenses.maintenance_annual or Decimal("0")))
         )
         maintenance_item = ExpenseLineItem(
             monthly=maintenance_monthly,
@@ -391,10 +389,7 @@ class UnderwritingService:
         income: IncomeResult,
         expenses: OperatingExpenseResult,
     ) -> InvestmentMetrics:
-        noi = money(
-            income.annual_effective_gross_income
-            - expenses.total_annual_operating_expenses
-        )
+        noi = money(income.annual_effective_gross_income - expenses.total_annual_operating_expenses)
         monthly_cash_flow = money(
             income.monthly_effective_gross_income
             - expenses.total_monthly_operating_expenses
@@ -470,8 +465,7 @@ class UnderwritingService:
             solve(
                 lambda metrics: (
                     assumptions.targets.monthly_cash_flow is not None
-                    and metrics.monthly_pre_tax_cash_flow
-                    >= assumptions.targets.monthly_cash_flow
+                    and metrics.monthly_pre_tax_cash_flow >= assumptions.targets.monthly_cash_flow
                 )
             )
             if assumptions.targets.monthly_cash_flow is not None
@@ -479,10 +473,10 @@ class UnderwritingService:
         )
         target_cap = (
             solve(
-                lambda metrics: metrics.cap_rate is not None
-                and metrics.cap_rate
-                >= percent_to_decimal(
-                    assumptions.targets.cap_rate_percent or Decimal("0")
+                lambda metrics: (
+                    metrics.cap_rate is not None
+                    and metrics.cap_rate
+                    >= percent_to_decimal(assumptions.targets.cap_rate_percent or Decimal("0"))
                 )
             )
             if assumptions.targets.cap_rate_percent is not None
@@ -490,17 +484,21 @@ class UnderwritingService:
         )
         target_coc = (
             solve(
-                lambda metrics: metrics.cash_on_cash_return is not None
-                and metrics.cash_on_cash_return
-                >= percent_to_decimal(assumptions.targets.cash_on_cash_percent or Decimal("0"))
+                lambda metrics: (
+                    metrics.cash_on_cash_return is not None
+                    and metrics.cash_on_cash_return
+                    >= percent_to_decimal(assumptions.targets.cash_on_cash_percent or Decimal("0"))
+                )
             )
             if assumptions.targets.cash_on_cash_percent is not None
             else None
         )
         target_dscr = (
             solve(
-                lambda metrics: metrics.dscr is not None
-                and metrics.dscr >= (assumptions.targets.dscr or Decimal("0"))
+                lambda metrics: (
+                    metrics.dscr is not None
+                    and metrics.dscr >= (assumptions.targets.dscr or Decimal("0"))
+                )
             )
             if assumptions.targets.dscr is not None
             else None
@@ -556,8 +554,7 @@ class UnderwritingService:
                 * (Decimal("1") + percent_to_decimal(adjustments["rent_percent_delta"]))
             )
             scenario_assumptions.income.vacancy_percent = (
-                assumptions.income.vacancy_percent
-                + adjustments["vacancy_percent_delta"]
+                assumptions.income.vacancy_percent + adjustments["vacancy_percent_delta"]
             )
             if scenario_assumptions.expenses.maintenance_percent is not None:
                 scenario_assumptions.expenses.maintenance_percent += adjustments[

@@ -83,4 +83,3 @@ def test_scenarios_include_three_named_variants() -> None:
     scenarios = service._scenarios(build_property(), build_assumptions())
     names = [scenario.name for scenario in scenarios]
     assert names == ["conservative", "expected", "optimistic"]
-

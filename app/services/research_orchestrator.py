@@ -116,9 +116,7 @@ class ResearchOrchestrator:
         result_map = {domain: result for domain, result in results}
         citations = self._dedupe_citations(result_map.values())
         completed = [
-            domain
-            for domain, result in results
-            if self._extract_result(result) is not None
+            domain for domain, result in results if self._extract_result(result) is not None
         ]
         failed = [domain for domain, result in results if self._extract_result(result) is None]
         package = ResearchPackage(
@@ -168,9 +166,7 @@ class ResearchOrchestrator:
                     ResearchWarning(
                         code="research_timeout",
                         domain=domain,
-                        message=(
-                            f"{domain} timed out on attempt {attempt} of {attempts}."
-                        ),
+                        message=(f"{domain} timed out on attempt {attempt} of {attempts}."),
                         retryable=True,
                     )
                 )

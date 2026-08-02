@@ -78,6 +78,4 @@ def test_research_registry_filters_by_domain_and_support() -> None:
 def test_research_registry_returns_sorted_provider_names() -> None:
     registry = ResearchProviderRegistry([DummyResearchProvider()])
 
-    assert registry.provider_names(ResearchDomain.PUBLIC_RECORDS) == [
-        "dummy_public_records"
-    ]
+    assert registry.provider_names(ResearchDomain.PUBLIC_RECORDS) == ["dummy_public_records"]

@@ -14,4 +14,3 @@ def test_maximum_offer_returns_binding_price() -> None:
     response = service.run(RunAnalysisRequest(property=build_property(), assumptions=assumptions))
     assert response.analysis is not None
     assert response.analysis.maximum_offer.binding_maximum_price is not None
-

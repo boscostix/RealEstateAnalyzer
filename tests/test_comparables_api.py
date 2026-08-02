@@ -81,9 +81,7 @@ def test_sales_comps_endpoint_returns_structured_result() -> None:
     try:
         response = client.post(
             "/api/v1/research/sales-comps",
-            json=SalesCompsResearchRequest(property=build_property()).model_dump(
-                mode="json"
-            ),
+            json=SalesCompsResearchRequest(property=build_property()).model_dump(mode="json"),
         )
     finally:
         app.dependency_overrides.clear()
@@ -99,9 +97,7 @@ def test_rental_comps_endpoint_returns_structured_result() -> None:
     try:
         response = client.post(
             "/api/v1/research/rental-comps",
-            json=RentalCompsResearchRequest(property=build_property()).model_dump(
-                mode="json"
-            ),
+            json=RentalCompsResearchRequest(property=build_property()).model_dump(mode="json"),
         )
     finally:
         app.dependency_overrides.clear()

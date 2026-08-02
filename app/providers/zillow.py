@@ -207,11 +207,7 @@ class ZillowProvider(ListingProvider):
             street = address.get("streetAddress") or address.get("street")
             city = address.get("city") or address.get("addressLocality")
             state = address.get("state") or address.get("stateCode") or address.get("addressRegion")
-            postal_code = (
-                address.get("zipcode")
-                or address.get("postalCode")
-                or address.get("zip")
-            )
+            postal_code = address.get("zipcode") or address.get("postalCode") or address.get("zip")
             full_address = (
                 address.get("full")
                 or address.get("fullAddress")
@@ -381,9 +377,7 @@ class ZillowProvider(ListingProvider):
         record_field(
             fields,
             "annual_hoa",
-            parse_decimal(
-                property_data.get("annualHoaFee") or property_data.get("annualHoa")
-            ),
+            parse_decimal(property_data.get("annualHoaFee") or property_data.get("annualHoa")),
             source="hasdata_api",
             confidence=0.8,
         )

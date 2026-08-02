@@ -29,14 +29,10 @@ async def verify_property(
     started_at = time.perf_counter()
     response = verification_service.verify(payload)
     verified_count = (
-        len(response.verification_summary.verified_fields)
-        if response.verification_summary
-        else 0
+        len(response.verification_summary.verified_fields) if response.verification_summary else 0
     )
     corrected_count = (
-        len(response.verification_summary.corrected_fields)
-        if response.verification_summary
-        else 0
+        len(response.verification_summary.corrected_fields) if response.verification_summary else 0
     )
     logger.info(
         "property_verify_completed request_id=%s verified_count=%s "

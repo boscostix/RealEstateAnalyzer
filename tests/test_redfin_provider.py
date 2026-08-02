@@ -89,9 +89,7 @@ class StubHasDataRedfinClient(HasDataRedfinClient):
 async def test_redfin_provider_extracts_hasdata_payload_from_url() -> None:
     provider = RedfinProvider(hasdata_client=StubHasDataRedfinClient())
 
-    result = await provider.extract_from_url(
-        "https://www.redfin.com/TX/Frisco/example/home/123"
-    )
+    result = await provider.extract_from_url("https://www.redfin.com/TX/Frisco/example/home/123")
 
     assert result is not None
     assert result.metadata.extraction_method == "hasdata_api"

@@ -13,4 +13,3 @@ def test_calculate_monthly_payment_for_zero_interest_loan() -> None:
 def test_calculate_monthly_payment_for_standard_loan() -> None:
     payment = calculate_monthly_payment(Decimal("200000"), Decimal("6"), 30)
     assert payment == Decimal("1199.10")
-

@@ -144,4 +144,3 @@ class RunAnalysisResponse(BaseModel):
     success: bool
     analysis: UnderwritingAnalysis | None = None
     metadata: AnalysisMetadata | None = None
-

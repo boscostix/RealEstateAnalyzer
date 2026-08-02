@@ -234,9 +234,7 @@ class SuccessfulRentalProvider(RentalCompsProvider):
 @pytest.mark.asyncio
 async def test_sales_comps_service_filters_ranks_and_caches_results() -> None:
     service = SalesCompsService(
-        registry=ResearchProviderRegistry(
-            [FailingSalesProvider(), SuccessfulSalesProvider()]
-        ),
+        registry=ResearchProviderRegistry([FailingSalesProvider(), SuccessfulSalesProvider()]),
         cache=InMemoryResearchCache(),
     )
     request = SalesCompsResearchRequest(
@@ -259,9 +257,7 @@ async def test_sales_comps_service_filters_ranks_and_caches_results() -> None:
 @pytest.mark.asyncio
 async def test_rental_comps_service_filters_ranks_and_summarizes_results() -> None:
     service = RentalCompsService(
-        registry=ResearchProviderRegistry(
-            [FailingRentalProvider(), SuccessfulRentalProvider()]
-        ),
+        registry=ResearchProviderRegistry([FailingRentalProvider(), SuccessfulRentalProvider()]),
         cache=InMemoryResearchCache(),
     )
     request = RentalCompsResearchRequest(
