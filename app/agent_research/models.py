@@ -121,6 +121,11 @@ class ConflictValue(AgentModel):
     source_id: str
     source_type: str
     confidence: Decimal
+    label: str | None = None
+    field_path: str | None = None
+    agent_name: str | None = None
+    authoritative: bool = False
+    verified: bool = False
     retrieved_at: datetime | None = None
 
     @field_validator("confidence")
@@ -138,8 +143,22 @@ class ResearchConflict(AgentModel):
     materiality: ConflictMateriality
     resolution_status: ConflictResolutionStatus
     preferred_value: Any | None = None
+    preferred_source_id: str | None = None
     resolution_reason: str | None = None
     requires_user_review: bool
+    source_precedence_applied: bool = False
+    requires_synthesis: bool = False
+
+
+class DuplicateFindingGroup(AgentModel):
+    """A deterministic duplicate-finding cluster across specialist agents."""
+
+    duplicate_id: str
+    canonical_finding_id: str
+    duplicate_finding_ids: list[str] = Field(default_factory=list)
+    agent_names: list[str] = Field(default_factory=list)
+    shared_signature: str
+    requires_user_review: bool = False
 
 
 class AgentExecutionMetadata(AgentModel):
@@ -212,6 +231,7 @@ class UnifiedAgentResearchPackage(AgentModel):
     risk_analysis: AgentResearchOutput
     consolidated_findings: list[AgentFinding] = Field(default_factory=list)
     conflicts: list[ResearchConflict] = Field(default_factory=list)
+    duplicate_findings: list[DuplicateFindingGroup] = Field(default_factory=list)
     missing_information: list[str] = Field(default_factory=list)
     due_diligence_questions: list[str] = Field(default_factory=list)
     evidence_index: list[EvidenceReference] = Field(default_factory=list)

@@ -6,6 +6,7 @@ from decimal import Decimal
 
 import pytest
 
+from app.agent_research.evidence import build_property_key
 from app.agent_research.exceptions import AgentGuardrailFailureError
 from app.agent_research.guardrails import validate_agent_output
 from app.agent_research.models import (
@@ -60,8 +61,7 @@ def test_guardrail_rejects_invalid_source_reference() -> None:
 
 def test_guardrail_caps_finding_confidence_by_evidence_strength() -> None:
     context = make_agent_context()
-    property_key = context.request_id  # force separate local variable use below
-    _ = property_key
+    property_key = build_property_key(context.verified_property)
     output = make_listing_agent_output()
     output.findings = [
         AgentFinding(
@@ -72,15 +72,37 @@ def test_guardrail_caps_finding_confidence_by_evidence_strength() -> None:
             significance="Confidence should be capped.",
             severity=FindingSeverity.MEDIUM,
             confidence=Decimal("0.95"),
-            evidence=[
-                make_evidence(
-                    context_property_key=context.request_id.replace("req", "property:bad")
-                )
-            ],
+            evidence=[make_evidence(context_property_key=property_key)],
             affected_fields=["asking_price"],
             is_inference=True,
         )
     ]
 
-    with pytest.raises(AgentGuardrailFailureError):
-        validate_agent_output(agent_name=AgentName.LISTING, output=output, context=context)
+    validate_agent_output(agent_name=AgentName.LISTING, output=output, context=context)
+
+    assert output.findings[0].confidence == Decimal("0.85")
+
+
+def test_guardrail_caps_overall_confidence_by_evidence_strength() -> None:
+    context = make_agent_context()
+    property_key = build_property_key(context.verified_property)
+    output = make_listing_agent_output()
+    output.overall_confidence = Decimal("0.99")
+    output.findings = [
+        AgentFinding(
+            finding_id="finding-1",
+            category="listing",
+            title="Supported by one evidence point",
+            finding="One evidence point supports this listing interpretation.",
+            significance="Overall confidence should be capped to the evidence limit.",
+            severity=FindingSeverity.LOW,
+            confidence=Decimal("0.70"),
+            evidence=[make_evidence(context_property_key=property_key)],
+            affected_fields=["asking_price"],
+            is_inference=False,
+        )
+    ]
+
+    validate_agent_output(agent_name=AgentName.LISTING, output=output, context=context)
+
+    assert output.overall_confidence == Decimal("0.85")

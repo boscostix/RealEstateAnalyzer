@@ -1,6 +1,7 @@
 """Shared AI agent research foundation for structured orchestration."""
 
 from app.agent_research.config import AgentRuntimeConfig, AgentTracingConfig
+from app.agent_research.conflicts import ConflictAnalysisResult, analyze_conflicts
 from app.agent_research.context import AgentRunContext, ResearchServiceContainer
 from app.agent_research.definitions import AGENT_DEFINITIONS, build_specialist_agents
 from app.agent_research.evidence import (
@@ -27,6 +28,7 @@ from app.agent_research.models import (
     ConflictMateriality,
     ConflictResolutionStatus,
     ConflictValue,
+    DuplicateFindingGroup,
     EvidenceReference,
     FindingSeverity,
     ResearchConflict,
@@ -80,9 +82,11 @@ __all__ = [
     "ComparableAgentInput",
     "ComparableAgentOutput",
     "ComparableAgentService",
+    "ConflictAnalysisResult",
     "ConflictMateriality",
     "ConflictResolutionStatus",
     "ConflictValue",
+    "DuplicateFindingGroup",
     "EvidenceIndex",
     "EvidenceReference",
     "FindingSeverity",
@@ -120,4 +124,5 @@ __all__ = [
     "validate_evidence_reference",
     "validate_evidence_references",
     "validate_source_ownership",
+    "analyze_conflicts",
 ]

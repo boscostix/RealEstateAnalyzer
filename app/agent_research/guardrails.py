@@ -101,7 +101,7 @@ def _fair_housing_report(output: NeighborhoodAgentOutput) -> NeighborhoodGuardra
     )
 
 
-def _bounded_confidence(output: AgentResearchOutput) -> Decimal:
+def bounded_confidence_limit(output: AgentResearchOutput) -> Decimal:
     evidence_count = sum(len(finding.evidence) for finding in output.findings)
     if evidence_count >= 6:
         return Decimal("0.95")
@@ -130,7 +130,7 @@ def validate_agent_output(
     invalid_sources: list[str] = []
     invalid_conflict_sources: list[str] = []
     unsupported_material_findings: list[str] = []
-    maximum_confidence = _bounded_confidence(output)
+    maximum_confidence = bounded_confidence_limit(output)
 
     for finding in output.findings:
         try:
@@ -149,6 +149,8 @@ def validate_agent_output(
             unsupported_material_findings.append(finding.finding_id)
         if finding.confidence > maximum_confidence:
             finding.confidence = maximum_confidence
+    if output.overall_confidence > maximum_confidence:
+        output.overall_confidence = maximum_confidence
 
     for source_id in output.sources_used:
         try:
