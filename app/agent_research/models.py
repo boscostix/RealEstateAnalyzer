@@ -161,6 +161,18 @@ class DuplicateFindingGroup(AgentModel):
     requires_user_review: bool = False
 
 
+class CrossDomainRelationship(AgentModel):
+    """A grouped cross-domain signal spanning more than one specialist agent."""
+
+    relationship_id: str
+    topic: str
+    summary: str
+    finding_ids: list[str] = Field(default_factory=list)
+    agent_names: list[str] = Field(default_factory=list)
+    affected_fields: list[str] = Field(default_factory=list)
+    evidence: list[EvidenceReference] = Field(default_factory=list)
+
+
 class AgentExecutionMetadata(AgentModel):
     """Execution metadata shared by specialist and synthesized outputs."""
 
@@ -224,12 +236,13 @@ class AgentResearchOutput(AgentModel):
 class UnifiedAgentResearchPackage(AgentModel):
     """Validated synthesized package assembled from all specialist outputs."""
 
-    listing_analysis: AgentResearchOutput
-    public_records_analysis: AgentResearchOutput
-    comparable_analysis: AgentResearchOutput
-    neighborhood_analysis: AgentResearchOutput
-    risk_analysis: AgentResearchOutput
+    listing_analysis: AgentResearchOutput | None = None
+    public_records_analysis: AgentResearchOutput | None = None
+    comparable_analysis: AgentResearchOutput | None = None
+    neighborhood_analysis: AgentResearchOutput | None = None
+    risk_analysis: AgentResearchOutput | None = None
     consolidated_findings: list[AgentFinding] = Field(default_factory=list)
+    cross_domain_relationships: list[CrossDomainRelationship] = Field(default_factory=list)
     conflicts: list[ResearchConflict] = Field(default_factory=list)
     duplicate_findings: list[DuplicateFindingGroup] = Field(default_factory=list)
     missing_information: list[str] = Field(default_factory=list)
