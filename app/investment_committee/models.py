@@ -379,6 +379,8 @@ class RecommendationPolicyDecision(CommitteeModel):
 
 
 class CommitteeExecutionMetadata(CommitteeModel):
+    request_id: str
+    workflow_name: str
     agent_version: str
     prompt_version: str
     input_format_version: str
@@ -386,6 +388,8 @@ class CommitteeExecutionMetadata(CommitteeModel):
     offer_range_policy_version: str
     confidence_policy_version: str
     model: str
+    traced: bool = False
+    trace_metadata: dict[str, str] = Field(default_factory=dict)
     trace_id: str | None = None
     started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     completed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
@@ -406,3 +410,31 @@ class CommitteeExecutionMetadata(CommitteeModel):
         if self.completed_at < self.started_at:
             raise ValueError("completed_at must be greater than or equal to started_at.")
         return self
+
+
+class CommitteeUsageMetadata(CommitteeModel):
+    requests: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    total_tokens: int = 0
+    response_count: int = 0
+
+    @field_validator(
+        "requests",
+        "input_tokens",
+        "output_tokens",
+        "total_tokens",
+        "response_count",
+    )
+    @classmethod
+    def validate_non_negative(cls, value: int) -> int:
+        if value < 0:
+            raise ValueError("Usage counters must be non-negative.")
+        return value
+
+
+class InvestmentCommitteeAnalysisResult(CommitteeModel):
+    output: InvestmentCommitteeOutput
+    execution_metadata: CommitteeExecutionMetadata
+    usage_metadata: CommitteeUsageMetadata
+    warnings: list[str] = Field(default_factory=list)

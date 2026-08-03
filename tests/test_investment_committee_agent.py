@@ -7,12 +7,14 @@ from decimal import Decimal
 from typing import Any
 
 import pytest
+from agents.usage import Usage
 
 from app.agent_research.sanitization import UNTRUSTED_TEXT_REPLACEMENT
 from app.investment_committee.config import CommitteeRuntimeConfig
 from app.investment_committee.definitions import build_investment_committee_agent
 from app.investment_committee.exceptions import CommitteeModelFailureError, CommitteeTimeoutError
 from app.investment_committee.models import InvestmentCommitteeOutput, InvestmentRecommendation
+from app.investment_committee.sdk import CommitteeRunArtifacts
 from app.investment_committee.services import InvestmentCommitteeService
 from app.investment_committee.versioning_runtime import COMMITTEE_AGENT_NAME
 from tests.test_investment_committee_models import (
@@ -89,7 +91,12 @@ class RecordingRunner:
         return self.output
 
     async def run_detailed(self, **_: Any) -> Any:
-        raise AssertionError("run_detailed should not be used by the committee service.")
+        output = await self.run(**_)
+        return CommitteeRunArtifacts(
+            output=output,
+            usage=Usage(requests=1, input_tokens=100, output_tokens=50, total_tokens=150),
+            response_count=1,
+        )
 
 
 def test_build_investment_committee_agent_has_strict_output_type_and_no_tools() -> None:
@@ -130,6 +137,29 @@ async def test_investment_committee_service_returns_mocked_structured_output() -
     assert output.due_diligence_checklist
     assert len(runner.calls) == 1
     assert runner.calls[0]["output_type"] is InvestmentCommitteeOutput
+
+
+@pytest.mark.asyncio
+async def test_investment_committee_service_returns_execution_and_usage_metadata() -> None:
+    runner = RecordingRunner(make_committee_output())
+    service = InvestmentCommitteeService(
+        runner=runner,
+        config=CommitteeRuntimeConfig(timeout_seconds=1.0, retry_attempts=0),
+    )
+
+    result = await service.analyze_with_details(
+        request_id="req-123",
+        analysis_id="analysis-1",
+        committee_input=make_committee_input(),
+    )
+
+    assert result.output.recommendation == InvestmentRecommendation.NEGOTIATE
+    assert result.execution_metadata.request_id == "req-123"
+    assert result.execution_metadata.workflow_name == "investment_committee"
+    assert result.execution_metadata.retry_count == 0
+    assert result.execution_metadata.traced is True
+    assert result.usage_metadata.requests == 1
+    assert result.usage_metadata.total_tokens == 150
 
 
 @pytest.mark.asyncio
