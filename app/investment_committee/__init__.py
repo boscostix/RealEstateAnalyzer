@@ -10,6 +10,20 @@ from app.investment_committee.exceptions import (
     UnsupportedOfferValueError,
     UnsupportedRecommendationError,
 )
+from app.investment_committee.input_builders import build_committee_model_input
+from app.investment_committee.input_models import (
+    CommitteeModelInput,
+    CommitteePreparedAgentSummary,
+    CommitteePreparedAssumption,
+    CommitteePreparedConflict,
+    CommitteePreparedConflictValue,
+    CommitteePreparedField,
+    CommitteePreparedFinding,
+    CommitteePreparedMetric,
+    CommitteePreparedResearch,
+    CommitteePreparedScenario,
+    CommitteePreparedStressTest,
+)
 from app.investment_committee.models import (
     RECOMMENDATION_LABEL_MEANINGS,
     AssumptionStatus,
@@ -46,12 +60,30 @@ from app.investment_committee.policies import (
     validate_recommendation,
     validate_recommendation_confidence,
 )
+from app.investment_committee.sanitization import (
+    SECRET_REPLACEMENT,
+    sanitize_committee_text,
+    sanitize_committee_value,
+    serialize_committee_model_input,
+)
 
 __all__ = [
     "AssumptionStatus",
+    "build_committee_model_input",
     "CommitteeExecutionMetadata",
+    "CommitteeModelInput",
     "CommitteeMissingItem",
     "CommitteePolicyVersions",
+    "CommitteePreparedAgentSummary",
+    "CommitteePreparedAssumption",
+    "CommitteePreparedConflict",
+    "CommitteePreparedConflictValue",
+    "CommitteePreparedField",
+    "CommitteePreparedFinding",
+    "CommitteePreparedMetric",
+    "CommitteePreparedResearch",
+    "CommitteePreparedScenario",
+    "CommitteePreparedStressTest",
     "CommitteeReason",
     "CommitteeRisk",
     "ConfidencePolicyViolationError",
@@ -76,6 +108,7 @@ __all__ = [
     "RecommendationPolicyDecision",
     "RecommendationPolicyViolationError",
     "RequiredCondition",
+    "SECRET_REPLACEMENT",
     "RiskProbability",
     "RiskTolerance",
     "UnsupportedOfferValueError",
@@ -85,6 +118,9 @@ __all__ = [
     "classify_missing_information",
     "classify_missing_information_list",
     "compute_confidence_limit",
+    "sanitize_committee_text",
+    "sanitize_committee_value",
+    "serialize_committee_model_input",
     "validate_offer_value",
     "validate_recommendation",
     "validate_recommendation_confidence",
