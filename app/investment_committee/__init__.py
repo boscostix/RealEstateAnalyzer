@@ -1,8 +1,14 @@
 """Deterministic investment-committee foundation."""
 
+from app.investment_committee.config import CommitteeRuntimeConfig, CommitteeTracingConfig
+from app.investment_committee.context import CommitteeRunContext
+from app.investment_committee.definitions import build_investment_committee_agent
 from app.investment_committee.exceptions import (
+    CommitteeModelFailureError,
+    CommitteeTimeoutError,
     ConfidencePolicyViolationError,
     InvalidCommitteeInputError,
+    InvalidCommitteeStructuredOutputError,
     InvalidOfferRangeError,
     InvestmentCommitteeError,
     MissingCommitteeInputError,
@@ -60,20 +66,43 @@ from app.investment_committee.policies import (
     validate_recommendation,
     validate_recommendation_confidence,
 )
+from app.investment_committee.prompts import INVESTMENT_COMMITTEE_PROMPT, CommitteePrompt
 from app.investment_committee.sanitization import (
     SECRET_REPLACEMENT,
     sanitize_committee_text,
     sanitize_committee_value,
     serialize_committee_model_input,
 )
+from app.investment_committee.sdk import (
+    CommitteeRunArtifacts,
+    CommitteeRunnerProtocol,
+    OpenAICommitteeRunner,
+)
+from app.investment_committee.services import InvestmentCommitteeService
+from app.investment_committee.tracing import (
+    build_committee_run_config,
+    configure_committee_tracing,
+)
+from app.investment_committee.versioning_runtime import (
+    COMMITTEE_AGENT_NAME,
+    build_committee_agent_version,
+    build_committee_prompt_version,
+)
 
 __all__ = [
     "AssumptionStatus",
+    "build_committee_agent_version",
     "build_committee_model_input",
+    "build_committee_prompt_version",
+    "build_committee_run_config",
+    "build_investment_committee_agent",
+    "CommitteeModelFailureError",
+    "COMMITTEE_AGENT_NAME",
     "CommitteeExecutionMetadata",
     "CommitteeModelInput",
     "CommitteeMissingItem",
     "CommitteePolicyVersions",
+    "CommitteePrompt",
     "CommitteePreparedAgentSummary",
     "CommitteePreparedAssumption",
     "CommitteePreparedConflict",
@@ -86,14 +115,24 @@ __all__ = [
     "CommitteePreparedStressTest",
     "CommitteeReason",
     "CommitteeRisk",
+    "CommitteeRunArtifacts",
+    "CommitteeRunContext",
+    "CommitteeRunnerProtocol",
+    "CommitteeRuntimeConfig",
+    "CommitteeTimeoutError",
+    "CommitteeTracingConfig",
     "ConfidencePolicyViolationError",
+    "configure_committee_tracing",
     "DecisionContext",
     "DeterministicOfferRange",
     "DueDiligenceItem",
     "DueDiligencePriority",
     "DueDiligenceTiming",
     "InvalidCommitteeInputError",
+    "InvalidCommitteeStructuredOutputError",
     "InvalidOfferRangeError",
+    "INVESTMENT_COMMITTEE_PROMPT",
+    "InvestmentCommitteeService",
     "InvestmentCommitteeError",
     "InvestmentCommitteeInput",
     "InvestmentCommitteeOutput",
@@ -109,6 +148,7 @@ __all__ = [
     "RecommendationPolicyViolationError",
     "RequiredCondition",
     "SECRET_REPLACEMENT",
+    "OpenAICommitteeRunner",
     "RiskProbability",
     "RiskTolerance",
     "UnsupportedOfferValueError",

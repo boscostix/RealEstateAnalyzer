@@ -59,3 +59,22 @@ class ConfidencePolicyViolationError(InvestmentCommitteeError):
     message = "The recommendation confidence exceeds deterministic committee policy."
     status_code = 422
     retryable = False
+
+
+class CommitteeTimeoutError(InvestmentCommitteeError):
+    code = "committee_timeout"
+    message = "The investment committee timed out."
+    status_code = 504
+
+
+class CommitteeModelFailureError(InvestmentCommitteeError):
+    code = "committee_model_failure"
+    message = "The investment committee model could not complete the run."
+    status_code = 502
+
+
+class InvalidCommitteeStructuredOutputError(InvestmentCommitteeError):
+    code = "invalid_committee_structured_output"
+    message = "The investment committee returned invalid structured output."
+    status_code = 422
+    retryable = False
