@@ -78,3 +78,10 @@ class InvalidCommitteeStructuredOutputError(InvestmentCommitteeError):
     message = "The investment committee returned invalid structured output."
     status_code = 422
     retryable = False
+
+
+class CommitteeOutputValidationError(InvestmentCommitteeError):
+    code = "committee_output_validation_failure"
+    message = "The investment committee output failed deterministic validation."
+    status_code = 422
+    retryable = False

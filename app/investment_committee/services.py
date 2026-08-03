@@ -21,6 +21,7 @@ from app.investment_committee.tracing import (
     build_committee_run_config,
     configure_committee_tracing,
 )
+from app.investment_committee.validation import validate_and_enforce_output
 
 
 class InvestmentCommitteeService:
@@ -64,7 +65,7 @@ class InvestmentCommitteeService:
         last_error: Exception | None = None
         for attempt in range(attempts):
             try:
-                return await asyncio.wait_for(
+                output = await asyncio.wait_for(
                     self._runner.run(
                         agent=agent,
                         agent_input=serialized_input,
@@ -73,6 +74,10 @@ class InvestmentCommitteeService:
                         output_type=InvestmentCommitteeOutput,
                     ),
                     timeout=self._config.timeout_seconds,
+                )
+                return validate_and_enforce_output(
+                    output,
+                    prepared_input=prepared_input,
                 )
             except InvalidCommitteeStructuredOutputError:
                 raise
