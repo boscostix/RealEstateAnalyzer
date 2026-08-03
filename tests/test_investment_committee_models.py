@@ -110,11 +110,11 @@ def make_reason() -> CommitteeReason:
 
 def make_due_diligence_item() -> DueDiligenceItem:
     return DueDiligenceItem(
-        category="inspection",
-        action="Confirm roof age with seller disclosures.",
-        reason="Roof age remains unverified.",
+        category="pricing",
+        action="Confirm the seller will accept an offer at or below the binding maximum price.",
+        reason="The asking price exceeds the supported deterministic offer threshold.",
         priority=DueDiligencePriority.HIGH,
-        timing=DueDiligenceTiming.DURING_OPTION_PERIOD,
+        timing=DueDiligenceTiming.BEFORE_OFFER,
         evidence=[make_evidence_reference()],
     )
 

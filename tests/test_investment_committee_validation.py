@@ -22,13 +22,19 @@ from app.investment_committee.exceptions import (
 from app.investment_committee.input_builders import build_committee_model_input
 from app.investment_committee.models import (
     CommitteeMissingItem,
+    DueDiligenceItem,
+    DueDiligencePriority,
+    DueDiligenceTiming,
     InvestmentRecommendation,
     MissingInformationMateriality,
+    NegotiationPoint,
     OfferRangeBasis,
     ReasonImportance,
+    RequiredCondition,
 )
 from app.investment_committee.validation import validate_and_enforce_output
 from tests.test_investment_committee_agent import make_committee_output
+from tests.test_investment_committee_models import make_evidence_reference
 from tests.test_investment_committee_policies import make_committee_input
 
 
@@ -197,6 +203,156 @@ def test_validate_output_rejects_prohibited_language() -> None:
     prepared = build_committee_model_input(committee_input)
     output = make_committee_output().model_copy(
         update={"recommendation_summary": "This outcome is guaranteed with no risk."}
+    )
+
+    with pytest.raises(CommitteeOutputValidationError):
+        validate_and_enforce_output(output, prepared_input=prepared)
+
+
+def test_validate_output_rejects_generic_due_diligence() -> None:
+    committee_input = make_committee_input()
+    prepared = build_committee_model_input(committee_input)
+    output = make_committee_output().model_copy(
+        update={
+            "due_diligence_checklist": [
+                DueDiligenceItem(
+                    category="general",
+                    action="Do more research on the property.",
+                    reason="Further due diligence is needed.",
+                    priority=DueDiligencePriority.MEDIUM,
+                    timing=DueDiligenceTiming.DURING_OPTION_PERIOD,
+                    evidence=[make_evidence_reference()],
+                )
+            ]
+        }
+    )
+
+    with pytest.raises(CommitteeOutputValidationError):
+        validate_and_enforce_output(output, prepared_input=prepared)
+
+
+def test_validate_output_rejects_low_priority_critical_due_diligence() -> None:
+    committee_input = make_committee_input()
+    committee_input.agent_research = committee_input.agent_research.model_copy(
+        update={"missing_information": ["Expected rent is unsupported"]}
+    )
+    prepared = build_committee_model_input(committee_input)
+    output = make_committee_output().model_copy(
+        update={
+            "recommendation_confidence": Decimal("0.35"),
+            "missing_information": [
+                CommitteeMissingItem(
+                    item="Expected rent is unsupported",
+                    materiality=MissingInformationMateriality.DECISION_CRITICAL,
+                    importance=ReasonImportance.DECISIVE,
+                    reason_needed="Expected rent support is missing.",
+                    decision_impact="Expected rent uncertainty blocks the return decision.",
+                    recommended_source="Rental comparable research",
+                    blocks_recommendation=True,
+                )
+            ],
+            "due_diligence_checklist": [
+                DueDiligenceItem(
+                    category="rent",
+                    action="Verify expected rent with rental comparable support.",
+                    reason="Expected rent remains unsupported.",
+                    priority=DueDiligencePriority.LOW,
+                    timing=DueDiligenceTiming.AFTER_PURCHASE,
+                    evidence=[make_evidence_reference()],
+                )
+            ],
+        }
+    )
+
+    with pytest.raises(CommitteeOutputValidationError):
+        validate_and_enforce_output(output, prepared_input=prepared)
+
+
+def test_validate_output_rejects_unsupported_negotiation_value() -> None:
+    committee_input = make_committee_input()
+    prepared = build_committee_model_input(committee_input)
+    output = make_committee_output().model_copy(
+        update={
+            "negotiation_points": [
+                NegotiationPoint(
+                    issue="Asking price exceeds the binding maximum price.",
+                    negotiation_request="Request a purchase price reduction to the supported cap.",
+                    rationale="The binding maximum price is lower than the current ask.",
+                    evidence=[make_evidence_reference()],
+                    estimated_value=Decimal("12345"),
+                )
+            ]
+        }
+    )
+
+    with pytest.raises(UnsupportedOfferValueError):
+        validate_and_enforce_output(output, prepared_input=prepared)
+
+
+def test_validate_output_rejects_generic_condition_before_offer() -> None:
+    committee_input = make_committee_input()
+    prepared = build_committee_model_input(committee_input)
+    output = make_committee_output().model_copy(
+        update={"conditions_before_offer": ["Complete further due diligence before offering."]}
+    )
+
+    with pytest.raises(CommitteeOutputValidationError):
+        validate_and_enforce_output(output, prepared_input=prepared)
+
+
+def test_validate_output_rejects_non_measurable_required_condition() -> None:
+    committee_input = make_committee_input()
+    prepared = build_committee_model_input(committee_input)
+    output = make_committee_output().model_copy(
+        update={
+            "what_must_be_true": [
+                RequiredCondition(
+                    condition="The deal must make sense overall.",
+                    current_status="unknown",
+                    threshold_or_requirement="Be acceptable.",
+                    evidence=[make_evidence_reference()],
+                    consequence_if_false="The investment would be weaker.",
+                )
+            ]
+        }
+    )
+
+    with pytest.raises(CommitteeOutputValidationError):
+        validate_and_enforce_output(output, prepared_input=prepared)
+
+
+def test_validate_output_rejects_generic_missing_information_impact() -> None:
+    committee_input = make_committee_input()
+    committee_input.agent_research = committee_input.agent_research.model_copy(
+        update={"missing_information": ["Expected rent is unsupported"]}
+    )
+    prepared = build_committee_model_input(committee_input)
+    output = make_committee_output().model_copy(
+        update={
+            "recommendation_confidence": Decimal("0.35"),
+            "missing_information": [
+                CommitteeMissingItem(
+                    item="Expected rent is unsupported",
+                    materiality=MissingInformationMateriality.DECISION_CRITICAL,
+                    importance=ReasonImportance.DECISIVE,
+                    reason_needed="Need more information.",
+                    decision_impact="It could matter to the decision.",
+                    recommended_source="Rental comparable research",
+                    blocks_recommendation=True,
+                )
+            ],
+        }
+    )
+
+    with pytest.raises(CommitteeOutputValidationError):
+        validate_and_enforce_output(output, prepared_input=prepared)
+
+
+def test_validate_output_rejects_generic_recommendation_language() -> None:
+    committee_input = make_committee_input()
+    prepared = build_committee_model_input(committee_input)
+    output = make_committee_output().model_copy(
+        update={"recommendation_summary": "Further due diligence is needed before any decision."}
     )
 
     with pytest.raises(CommitteeOutputValidationError):
