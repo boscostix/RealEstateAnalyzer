@@ -12,6 +12,7 @@ from app.agent_research.models import (
     ConflictValue,
     EvidenceReference,
     EvidenceSourceType,
+    FindingSeverity,
     ResearchConflict,
 )
 from app.investment_committee.exceptions import (
@@ -22,6 +23,7 @@ from app.investment_committee.exceptions import (
 from app.investment_committee.input_builders import build_committee_model_input
 from app.investment_committee.models import (
     CommitteeMissingItem,
+    CommitteeRisk,
     DueDiligenceItem,
     DueDiligencePriority,
     DueDiligenceTiming,
@@ -31,6 +33,7 @@ from app.investment_committee.models import (
     OfferRangeBasis,
     ReasonImportance,
     RequiredCondition,
+    RiskProbability,
 )
 from app.investment_committee.validation import validate_and_enforce_output
 from tests.test_investment_committee_agent import make_committee_output
@@ -357,3 +360,40 @@ def test_validate_output_rejects_generic_recommendation_language() -> None:
 
     with pytest.raises(CommitteeOutputValidationError):
         validate_and_enforce_output(output, prepared_input=prepared)
+
+
+def test_validate_output_returns_confidence_reasons_and_sorted_risks() -> None:
+    committee_input = make_committee_input()
+    prepared = build_committee_model_input(committee_input)
+    output = make_committee_output().model_copy(
+        update={
+            "material_risks": [
+                CommitteeRisk(
+                    category="pricing",
+                    title="Moderate pricing gap",
+                    explanation="The ask is above the deterministic threshold.",
+                    severity=FindingSeverity.MEDIUM,
+                    probability=RiskProbability.HIGH,
+                    evidence=[make_evidence_reference()],
+                    blocks_investment=False,
+                ),
+                CommitteeRisk(
+                    category="cash_flow",
+                    title="Critical downside case",
+                    explanation="A small rent miss would materially compress returns.",
+                    severity=FindingSeverity.CRITICAL,
+                    probability=RiskProbability.MEDIUM,
+                    evidence=[make_evidence_reference()],
+                    blocks_investment=True,
+                ),
+            ]
+        }
+    )
+
+    validated = validate_and_enforce_output(output, prepared_input=prepared)
+
+    assert validated.recommendation_confidence_reasons == prepared.policy.confidence_limit.reasons
+    assert [risk.title for risk in validated.material_risks] == [
+        "Critical downside case",
+        "Moderate pricing gap",
+    ]

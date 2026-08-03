@@ -153,6 +153,7 @@ def test_committee_output_rejects_buy_only_below_without_threshold() -> None:
             recommendation=InvestmentRecommendation.BUY_ONLY_BELOW,
             recommendation_summary="Only works below ask.",
             recommendation_confidence=Decimal("0.70"),
+            recommendation_confidence_reasons=["base_research_confidence:0.80"],
             asking_price=Decimal("300000"),
             investment_thesis="The property may work at a lower price.",
             strongest_upside="Below-market asking price if negotiated lower.",
@@ -178,6 +179,7 @@ def test_committee_output_accepts_deterministic_offer_basis() -> None:
         recommendation=InvestmentRecommendation.BUY_ONLY_BELOW,
         recommendation_summary="Only works below ask.",
         recommendation_confidence=Decimal("0.70"),
+        recommendation_confidence_reasons=["base_research_confidence:0.80"],
         asking_price=Decimal("300000"),
         supported_offer_low=Decimal("250000"),
         supported_offer_high=Decimal("280000"),
@@ -255,3 +257,37 @@ def test_committee_execution_metadata_rejects_negative_duration() -> None:
             duration_ms=-1,
             validation_status="passed",
         )
+
+
+def test_committee_output_accepts_confidence_reasons() -> None:
+    output = InvestmentCommitteeOutput(
+        recommendation=InvestmentRecommendation.NEGOTIATE,
+        recommendation_summary="Negotiation is warranted at the current ask.",
+        recommendation_confidence=Decimal("0.70"),
+        recommendation_confidence_reasons=[
+            "base_research_confidence:0.80",
+            "asking_price_above_threshold",
+        ],
+        asking_price=Decimal("300000"),
+        investment_thesis="The property may work below the current price.",
+        strongest_upside="Cash flow remains positive under the expected case.",
+        strongest_downside="The ask exceeds the supported deterministic threshold.",
+        reasons_to_proceed=[make_reason()],
+        reasons_not_to_proceed=[make_reason()],
+        key_assumptions=[],
+        fragile_assumptions=[],
+        material_risks=[],
+        missing_information=[],
+        unresolved_conflicts=[],
+        what_must_be_true=[make_required_condition()],
+        due_diligence_checklist=[make_due_diligence_item()],
+        negotiation_points=[],
+        conditions_before_offer=[],
+        conditions_before_closing=[],
+        evidence_references=[make_evidence_reference()],
+    )
+
+    assert output.recommendation_confidence_reasons == [
+        "base_research_confidence:0.80",
+        "asking_price_above_threshold",
+    ]

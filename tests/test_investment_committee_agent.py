@@ -31,6 +31,7 @@ def make_committee_output() -> InvestmentCommitteeOutput:
         recommendation=InvestmentRecommendation.NEGOTIATE,
         recommendation_summary="The property may work, but the current price is unsupported.",
         recommendation_confidence=Decimal("0.70"),
+        recommendation_confidence_reasons=["base_research_confidence:0.80"],
         asking_price=Decimal("300000"),
         investment_thesis="The deal has potential if purchased on better terms.",
         strongest_upside="Cash flow remains positive under the expected case.",
@@ -135,6 +136,7 @@ async def test_investment_committee_service_returns_mocked_structured_output() -
     assert output.reasons_not_to_proceed
     assert output.what_must_be_true
     assert output.due_diligence_checklist
+    assert output.recommendation_confidence_reasons
     assert len(runner.calls) == 1
     assert runner.calls[0]["output_type"] is InvestmentCommitteeOutput
 
@@ -160,6 +162,7 @@ async def test_investment_committee_service_returns_execution_and_usage_metadata
     assert result.execution_metadata.traced is True
     assert result.usage_metadata.requests == 1
     assert result.usage_metadata.total_tokens == 150
+    assert result.output.recommendation_confidence_reasons
 
 
 @pytest.mark.asyncio

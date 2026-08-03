@@ -101,6 +101,10 @@ class PartialCommitteeService:
             update={
                 "recommendation": InvestmentRecommendation.INSUFFICIENT_INFORMATION,
                 "recommendation_confidence": Decimal("0.35"),
+                "recommendation_confidence_reasons": [
+                    "base_research_confidence:0.80",
+                    "decision_critical_missing:Expected rent is unsupported",
+                ],
                 "missing_information": [
                     CommitteeMissingItem(
                         item="Expected rent is unsupported",
@@ -182,6 +186,7 @@ def test_investment_committee_endpoint_returns_structured_result() -> None:
     body = response.json()
     assert body["success"] is True
     assert body["committee_output"]["recommendation"] == "negotiate"
+    assert body["committee_output"]["recommendation_confidence_reasons"]
     assert body["execution_metadata"]["request_id"] == "req-123"
     assert body["execution_metadata"]["traced"] is True
     assert body["usage_metadata"]["total_tokens"] == 150
@@ -207,6 +212,7 @@ def test_investment_committee_endpoint_handles_partial_upstream_inputs() -> None
     body = response.json()
     assert body["success"] is True
     assert body["committee_output"]["recommendation"] == "insufficient_information"
+    assert body["committee_output"]["recommendation_confidence_reasons"]
     assert body["committee_output"]["missing_information"][0]["item"] == (
         "Expected rent is unsupported"
     )

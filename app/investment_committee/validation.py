@@ -17,6 +17,7 @@ from app.investment_committee.exceptions import (
 )
 from app.investment_committee.input_models import CommitteeModelInput
 from app.investment_committee.models import (
+    CommitteeRisk,
     DueDiligencePriority,
     DueDiligenceTiming,
     InvestmentCommitteeOutput,
@@ -40,6 +41,19 @@ _DOWNGRADE_ORDER: tuple[InvestmentRecommendation, ...] = (
     InvestmentRecommendation.BUY,
     InvestmentRecommendation.STRONG_BUY,
 )
+_RISK_SEVERITY_ORDER = {
+    "critical": 0,
+    "high": 1,
+    "medium": 2,
+    "low": 3,
+    "informational": 4,
+}
+_RISK_PROBABILITY_ORDER = {
+    "high": 0,
+    "medium": 1,
+    "low": 2,
+    "unknown": 3,
+}
 
 _PROHIBITED_PATTERNS = (
     re.compile(r"(?is)\bguaranteed?\b|\bno risk\b|\bwill definitely\b"),
@@ -209,6 +223,28 @@ def _allowed_monetary_values(prepared_input: CommitteeModelInput) -> set[Decimal
         for metric in stress_test.metrics:
             collect(metric.value)
     return values
+
+
+def _risk_sort_key(risk: CommitteeRisk) -> tuple[int, int, int, str]:
+    severity_key = _RISK_SEVERITY_ORDER.get(str(risk.severity), 99)
+    probability_key = _RISK_PROBABILITY_ORDER.get(
+        "unknown" if risk.probability is None else str(risk.probability),
+        99,
+    )
+    blocks_key = 0 if risk.blocks_investment else 1
+    return (severity_key, probability_key, blocks_key, risk.title.lower())
+
+
+def normalize_output(
+    output: InvestmentCommitteeOutput,
+    policy: RecommendationPolicyDecision,
+) -> InvestmentCommitteeOutput:
+    return output.model_copy(
+        update={
+            "recommendation_confidence_reasons": list(policy.confidence_limit.reasons),
+            "material_risks": sorted(output.material_risks, key=_risk_sort_key),
+        }
+    )
 
 
 def _topic_anchors(
@@ -592,6 +628,7 @@ def validate_and_enforce_output(
     except RecommendationPolicyViolationError:
         output = _downgrade_recommendation(output, policy)
 
+    output = normalize_output(output, policy)
     validate_recommendation_confidence(output, policy)
     validate_offer_range(output, policy)
     validate_metric_preservation(output, prepared_input)

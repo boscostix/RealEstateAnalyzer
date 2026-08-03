@@ -250,9 +250,11 @@ The investment committee layer consumes verified property data, deterministic un
 It returns:
 
 - A structured recommendation label
+- A confidence score plus deterministic confidence reasons
 - Deterministic offer support boundaries when applicable
 - Reasons for and against proceeding
 - Missing-information impacts
+- Ranked material risks
 - Due-diligence checklist items with timing and priority
 - What-must-be-true conditions
 - Negotiation points tied to valid evidence

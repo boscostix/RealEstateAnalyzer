@@ -228,6 +228,7 @@ def make_output(*, confidence: Decimal) -> InvestmentCommitteeOutput:
         recommendation=InvestmentRecommendation.NEGOTIATE,
         recommendation_summary="Further negotiation is warranted.",
         recommendation_confidence=confidence,
+        recommendation_confidence_reasons=["base_research_confidence:0.80"],
         asking_price=Decimal("300000"),
         investment_thesis="The deal could work below ask.",
         strongest_upside="Solid baseline income at a lower basis.",

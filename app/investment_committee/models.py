@@ -267,6 +267,7 @@ class InvestmentCommitteeOutput(CommitteeModel):
     recommendation: InvestmentRecommendation
     recommendation_summary: str
     recommendation_confidence: Decimal
+    recommendation_confidence_reasons: list[str] = Field(default_factory=list)
     asking_price: Decimal
     supported_offer_low: Decimal | None = None
     supported_offer_high: Decimal | None = None
