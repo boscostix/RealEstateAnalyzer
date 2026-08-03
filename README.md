@@ -1,6 +1,6 @@
 # RealEstateAnalyzer
 
-`RealEstateAnalyzer` is a Python 3.12 FastAPI application for structured real estate listing ingestion, deterministic underwriting, deterministic research collection, and evidence-backed agent research packaging.
+`RealEstateAnalyzer` is a Python 3.12 FastAPI application for structured real estate listing ingestion, deterministic underwriting, deterministic research collection, evidence-backed agent research packaging, and a policy-constrained investment committee recommendation workflow.
 
 The project is being built in phases. The current repository already includes:
 
@@ -10,6 +10,7 @@ The project is being built in phases. The current repository already includes:
 - Deterministic research services for public records, comparable properties, and neighborhood data
 - Structured specialist-agent analysis on top of verified data and research
 - A unified `/api/v1/agent-research/run` endpoint that returns traceable outputs without final investment recommendations
+- An `/api/v1/investment-committee/analyze` endpoint that turns deterministic upstream analysis into a structured, evidence-backed committee recommendation
 
 ## What the system does today
 
@@ -19,6 +20,7 @@ The project is being built in phases. The current repository already includes:
 - Builds normalized research packages with citations, confidence, cache metadata, and provider provenance
 - Runs narrow specialist agents over verified inputs and structured research
 - Preserves evidence, conflicts, warnings, missing information, and execution metadata in the final agent-research package
+- Produces a structured investment committee recommendation without allowing the model to recalculate deterministic metrics
 
 ## What is intentionally not included
 
@@ -165,6 +167,12 @@ Structured agent research:
 POST /api/v1/agent-research/run
 ```
 
+Investment committee analysis:
+
+```text
+POST /api/v1/investment-committee/analyze
+```
+
 ## Example: extract a Zillow listing
 
 ```bash
@@ -204,6 +212,7 @@ If a HasData key is configured and accepted, the response returns normalized pro
 3. Send the verified property to `POST /api/v1/analyses/run` for deterministic underwriting.
 4. Optionally send the verified property plus underwriting result to `POST /api/v1/research/run` for deterministic research aggregation.
 5. Send the verified property, extraction, research package, and underwriting result to `POST /api/v1/agent-research/run` for evidence-backed specialist-agent outputs.
+6. Send the verified property, underwriting result, and unified agent research package to `POST /api/v1/investment-committee/analyze` for a structured committee recommendation.
 
 The Swagger docs are the easiest place to inspect the exact request and response schemas for each step.
 
@@ -234,6 +243,28 @@ The final package preserves:
 - Trace metadata
 - Warnings and partial-failure status
 
+## Investment committee workflow
+
+The investment committee layer consumes verified property data, deterministic underwriting, and the unified agent-research package.
+
+It returns:
+
+- A structured recommendation label
+- Deterministic offer support boundaries when applicable
+- Reasons for and against proceeding
+- Missing-information impacts
+- Due-diligence checklist items with timing and priority
+- What-must-be-true conditions
+- Negotiation points tied to valid evidence
+- Execution and usage metadata
+
+It does not:
+
+- Recalculate deterministic financial metrics
+- Invent offer values, rents, or repair numbers
+- Hide conflicts or missing information
+- Bypass evidence or recommendation policy rules
+
 ## Tracing and hardening
 
 The current agent workflow includes:
@@ -248,6 +279,15 @@ The current agent workflow includes:
 - Regression fixtures for conflict recall, evidence coverage, and missing-data recall
 
 Sensitive research text is sanitized before it reaches the agents, and raw HTML, cookies, and secrets are not passed through typed agent tools.
+
+The investment committee workflow adds:
+
+- Deterministic recommendation downgrades when policy disallows a more aggressive label
+- Offer-range validation against existing deterministic values
+- Due-diligence and negotiation-point hardening
+- Trace metadata with request, analysis, workflow, prompt, and agent version fields
+- Sensitive-data exclusion by default in trace metadata
+- Fixture-driven evaluations for policy, evidence, conflicts, missing data, confidence, and prompt injection
 
 ## Environment variables
 
@@ -268,6 +308,15 @@ Important variables include:
 - `OPENAI_AGENT_WORKFLOW_NAME`
 - `OPENAI_AGENT_TRACE_SENSITIVE_DATA`
 - `ENABLE_LIVE_AGENT_RESEARCH_TESTS`
+- `OPENAI_COMMITTEE_MODEL`
+- `OPENAI_COMMITTEE_PROMPT_VERSION`
+- `OPENAI_COMMITTEE_MAX_TURNS`
+- `OPENAI_COMMITTEE_TIMEOUT_SECONDS`
+- `OPENAI_COMMITTEE_RETRY_ATTEMPTS`
+- `OPENAI_COMMITTEE_TRACING_ENABLED`
+- `OPENAI_COMMITTEE_WORKFLOW_NAME`
+- `OPENAI_COMMITTEE_TRACE_SENSITIVE_DATA`
+- `ENABLE_LIVE_INVESTMENT_COMMITTEE_TESTS`
 
 See [.env.example](/Users/bhaskar/Downloads/RealEstateAnalyzer/.env.example) for defaults.
 

@@ -30,6 +30,8 @@ def build_committee_run_config(
         trace_metadata={
             "request_id": request_id,
             "analysis_id": analysis_id or "",
+            "workflow_name": config.tracing.workflow_name,
+            "trace_sensitive_data": str(config.tracing.include_sensitive_data).lower(),
             "agent_name": COMMITTEE_AGENT_NAME,
             "agent_version": build_committee_agent_version(),
             "prompt_version": build_committee_prompt_version(),
