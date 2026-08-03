@@ -36,7 +36,7 @@ from app.agent_research.specialist_models import (
     PublicRecordsAgentOutput,
 )
 from app.agent_research.tracing import build_run_config, configure_agents_tracing
-from app.agent_research.versioning import AgentName
+from app.agent_research.versioning import AgentName, build_agent_version
 
 
 class SpecialistAgentService[
@@ -85,6 +85,9 @@ class SpecialistAgentService[
             self._config,
             request_id=context.request_id,
             group_id=context.analysis_id,
+            agent_name=str(self._agent_name),
+            agent_version=build_agent_version(self._agent_name),
+            prompt_version=context.agent_config.prompt_version,
         )
         agent_input = json.dumps(
             built_input.model_dump(mode="json"),
@@ -122,6 +125,20 @@ class SpecialistAgentService[
                         "request_id": context.request_id,
                         "analysis_id": context.analysis_id or "",
                         "prompt_version": context.agent_config.prompt_version,
+                        "workflow_name": self._config.tracing.workflow_name,
+                        "trace_enabled": str(self._config.tracing.enabled).lower(),
+                        "trace_sensitive_data": str(
+                            self._config.tracing.include_sensitive_data
+                        ).lower(),
+                        "agent_version": build_agent_version(self._agent_name),
+                        "llm_call_count": str(
+                            0 if artifacts.lifecycle is None else artifacts.lifecycle.llm_call_count
+                        ),
+                        "tool_call_count": str(
+                            0
+                            if artifacts.lifecycle is None
+                            else artifacts.lifecycle.tool_call_count
+                        ),
                     },
                 ),
             )
@@ -258,6 +275,9 @@ class PropertyRiskAgentService:
             self._config,
             request_id=context.request_id,
             group_id=context.analysis_id,
+            agent_name=str(AgentName.PROPERTY_RISK),
+            agent_version=build_agent_version(AgentName.PROPERTY_RISK),
+            prompt_version=context.agent_config.prompt_version,
         )
         agent_input = json.dumps(
             built_input.model_dump(mode="json"),
@@ -295,6 +315,20 @@ class PropertyRiskAgentService:
                         "request_id": context.request_id,
                         "analysis_id": context.analysis_id or "",
                         "prompt_version": context.agent_config.prompt_version,
+                        "workflow_name": self._config.tracing.workflow_name,
+                        "trace_enabled": str(self._config.tracing.enabled).lower(),
+                        "trace_sensitive_data": str(
+                            self._config.tracing.include_sensitive_data
+                        ).lower(),
+                        "agent_version": build_agent_version(AgentName.PROPERTY_RISK),
+                        "llm_call_count": str(
+                            0 if artifacts.lifecycle is None else artifacts.lifecycle.llm_call_count
+                        ),
+                        "tool_call_count": str(
+                            0
+                            if artifacts.lifecycle is None
+                            else artifacts.lifecycle.tool_call_count
+                        ),
                     },
                 ),
             )

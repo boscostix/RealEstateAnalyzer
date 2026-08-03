@@ -11,6 +11,8 @@ from agents.usage import Usage
 
 from app.agent_research.context import AgentRunContext
 from app.agent_research.exceptions import InvalidStructuredAgentOutputError
+from app.agent_research.tracing import AgentLifecycleSummary, build_run_hooks
+from app.agent_research.versioning import AgentName, build_agent_version
 
 TOutput = TypeVar("TOutput")
 
@@ -22,6 +24,7 @@ class AgentRunArtifacts[TOutput]:
     output: TOutput
     usage: Usage = field(default_factory=Usage)
     response_count: int = 0
+    lifecycle: AgentLifecycleSummary | None = None
 
 
 class AgentRunnerProtocol(Protocol):
@@ -80,12 +83,21 @@ class OpenAIAgentRunner:
         run_config: RunConfig,
         output_type: type[TOutput],
     ) -> AgentRunArtifacts[TOutput]:
+        hooks = build_run_hooks(
+            context.agent_config,
+            request_id=context.request_id,
+            analysis_id=context.analysis_id,
+            agent_name=str(agent.name),
+            agent_version=build_agent_version(AgentName(str(agent.name))),
+            prompt_version=context.agent_config.prompt_version,
+        )
         result = await Runner.run(
             agent,
             agent_input,
             context=context,
             max_turns=context.agent_config.max_turns,
             run_config=run_config,
+            hooks=hooks,
         )
         try:
             output = result.final_output_as(output_type)
@@ -101,4 +113,5 @@ class OpenAIAgentRunner:
             output=output,
             usage=usage,
             response_count=len(raw_responses),
+            lifecycle=hooks.summary,
         )

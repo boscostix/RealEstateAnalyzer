@@ -1,61 +1,55 @@
 # RealEstateAnalyzer
 
-`RealEstateAnalyzer` is an early milestone of an AI-assisted real estate investment analysis platform.
+`RealEstateAnalyzer` is a Python 3.12 FastAPI application for structured real estate listing ingestion, deterministic underwriting, deterministic research collection, and evidence-backed agent research packaging.
 
-This repository currently contains:
+The project is being built in phases. The current repository already includes:
 
-- A property listing ingestion and extraction service
-- A property verification layer for reviewing extracted fields
-- A deterministic underwriting engine for running investment analysis without AI/LLM calls
+- Listing extraction for Zillow and Redfin
+- Property verification with field-level provenance
+- Deterministic underwriting and stress testing
+- Deterministic research services for public records, comparable properties, and neighborhood data
+- Structured specialist-agent analysis on top of verified data and research
+- A unified `/api/v1/agent-research/run` endpoint that returns traceable outputs without final investment recommendations
 
-## Current milestone
+## What the system does today
 
-This codebase currently implements:
+- Accepts supported listing URLs and normalizes property data
+- Lets downstream workflows distinguish extracted, corrected, verified, and missing fields
+- Runs deterministic underwriting without LLM math
+- Builds normalized research packages with citations, confidence, cache metadata, and provider provenance
+- Runs narrow specialist agents over verified inputs and structured research
+- Preserves evidence, conflicts, warnings, missing information, and execution metadata in the final agent-research package
 
-- FastAPI extraction API
-- FastAPI verification and analysis APIs
-- Provider adapter architecture
-- URL validation and SSRF protections
-- Static HTTP page fetching with redirect, timeout, and size limits
-- Playwright fallback for JavaScript-rendered pages
-- Blocked-page and CAPTCHA detection
-- Request ID middleware and structured application logging
-- Zillow adapter
-- Optional HasData-backed Zillow API integration
-- Optional HasData-backed Redfin API integration
-- Redfin adapter
-- Verified property snapshot modeling
-- Deterministic underwriting assumptions and outputs
-- Scenario analysis
-- Stress testing
-- Maximum-offer calculations
-- Fixture-based parsing tests
-- API integration tests
-- Dockerfile and docker-compose setup
+## What is intentionally not included
 
-Not implemented yet:
-
-- Authentication
+- User authentication
 - Frontend UI
 - Database persistence
-- AI agent orchestration
-- Deployment beyond local Docker support
+- Autonomous investment recommendations
+- Billing
+- Deployment infrastructure beyond local Docker support
 
-## Project structure
+## Supported listing providers
+
+- Zillow
+- Redfin
+
+## Architecture
 
 ```text
 app/
-├── api/                # FastAPI routes and dependency wiring
-├── calculations/       # Deterministic underwriting math modules
-├── models/             # Pydantic request, response, and domain models
-├── presets/            # Named underwriting assumption presets
-├── providers/          # Zillow / Redfin adapters
-├── services/           # Fetching, fallback, registry, orchestration
-├── utils/              # URL and parsing helpers
-└── logging.py          # Request-id middleware and logging setup
+├── agent_research/     # Typed tools, specialist agents, orchestration, conflicts, synthesis
+├── api/                # FastAPI route modules
+├── calculations/       # Deterministic underwriting calculations
+├── models/             # Extraction, verification, research, and underwriting models
+├── presets/            # Underwriting assumption presets
+├── providers/          # Listing providers plus research provider adapters
+├── services/           # Fetching, verification, underwriting, research orchestration
+├── utils/              # Parsing, validation, SSRF, and shared helpers
+└── logging.py          # Request-id middleware and structured application logging
 
 tests/
-├── fixtures/           # Sanitized provider HTML samples
+├── fixtures/           # Sanitized listing, research, and evaluation fixtures
 └── ...
 ```
 
@@ -63,6 +57,7 @@ tests/
 
 - Python 3.12
 - `uv`
+- Docker Desktop if you want to run the container locally
 
 ## Local setup
 
@@ -72,42 +67,52 @@ Install dependencies:
 uv sync --dev
 ```
 
-If you have a HasData key for Zillow and Redfin property lookups, you can either export it:
-
-```bash
-export HASDATA_API_KEY=your_key_here
-```
-
-or place it in the local file the app reads by default:
-
-```text
-secrets/hasdata_api_key.txt
-```
-
-That file should contain only the raw key value on one line.
-
-Install the Playwright browser used by the fallback fetcher:
+Install the Playwright browser used by the fallback listing fetcher:
 
 ```bash
 uv run playwright install chromium
 ```
 
-Run the API locally:
+If you have a HasData key for Zillow and Redfin property lookups, either export it:
+
+```bash
+export HASDATA_API_KEY=your_key_here
+```
+
+or place it in:
+
+```text
+secrets/hasdata_api_key.txt
+```
+
+That file should contain only the raw API key on one line.
+
+If you want to run the OpenAI-backed agent workflow locally, set:
+
+```bash
+export OPENAI_API_KEY=your_key_here
+```
+
+The default environment variables are listed in [.env.example](/Users/bhaskar/Downloads/RealEstateAnalyzer/.env.example).
+
+## Run the API
+
+Start the server:
 
 ```bash
 uv run uvicorn app.main:app --reload
 ```
 
-The app will start on `http://127.0.0.1:8000`.
+The API runs at `http://127.0.0.1:8000`.
 
-Interactive docs are available at:
+Interactive docs:
 
 - `http://127.0.0.1:8000/docs`
 - `http://127.0.0.1:8000/redoc`
 
-If you change the HasData key file or update provider code, restart `uvicorn` so the running app picks up the latest configuration.
+The root path `/` is not a homepage, so `GET /` returning `{"detail":"Not Found"}` is expected.
 
-## Useful commands
+## Common commands
 
 Run tests:
 
@@ -119,6 +124,7 @@ Run Ruff:
 
 ```bash
 uv run ruff check .
+uv run ruff format --check .
 ```
 
 Run mypy:
@@ -127,35 +133,39 @@ Run mypy:
 uv run mypy app
 ```
 
-## API usage
+## API endpoints
 
-Extraction endpoint:
+Listing extraction:
 
 ```text
 POST /api/v1/listings/extract
 ```
 
-Verification endpoint:
+Property verification:
 
 ```text
 POST /api/v1/properties/verify
 ```
 
-Analysis endpoint:
+Deterministic underwriting:
 
 ```text
 POST /api/v1/analyses/run
 ```
 
-Example request:
+Deterministic research package:
 
-```bash
-curl -X POST http://localhost:8000/api/v1/listings/extract \
-  -H "Content-Type: application/json" \
-  -d '{"url":"https://www.zillow.com/homedetails/example"}'
+```text
+POST /api/v1/research/run
 ```
 
-Example Zillow request using the HasData-backed path:
+Structured agent research:
+
+```text
+POST /api/v1/agent-research/run
+```
+
+## Example: extract a Zillow listing
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/v1/listings/extract \
@@ -163,386 +173,122 @@ curl -X POST http://127.0.0.1:8000/api/v1/listings/extract \
   -d '{"url":"https://www.zillow.com/homedetails/1620-Sunnybrook-Dr-Irving-TX-75061/27118489_zpid/"}'
 ```
 
-Example Redfin request using the same HasData-backed key:
-
-```bash
-curl -X POST http://127.0.0.1:8000/api/v1/listings/extract \
-  -H "Content-Type: application/json" \
-  -d '{"url":"https://www.redfin.com/TX/Frisco/11809-Woodland-Way-75035/home/32250941"}'
-```
-
-Example success shape:
+If a HasData key is configured and accepted, the response returns normalized property data similar to:
 
 ```json
 {
   "success": true,
   "provider": "zillow",
-  "source_url": "https://www.zillow.com/homedetails/example",
+  "source_url": "https://www.zillow.com/homedetails/1620-Sunnybrook-Dr-Irving-TX-75061/27118489_zpid/",
   "property": {
-    "source_url": "https://www.zillow.com/homedetails/example",
     "provider": "zillow",
+    "source_url": "https://www.zillow.com/homedetails/1620-Sunnybrook-Dr-Irving-TX-75061/27118489_zpid/",
     "address": {
-      "street": "8400 Silverado Trl",
-      "city": "McKinney",
-      "state": "TX",
-      "postal_code": "75070",
-      "full_address": "8400 Silverado Trl, McKinney, TX 75070"
-    }
+      "full_address": "1620 Sunnybrook Dr, Irving, TX 75061"
+    },
+    "asking_price": "444000"
   },
   "metadata": {
-    "extraction_method": "next_data",
-    "fields_found": 21,
+    "extraction_method": "hasdata_api",
+    "fields_found": 15,
     "fields_missing": [],
     "warnings": []
   }
 }
 ```
 
-Example error shape:
+## End-to-end flow you can run today
 
-```json
-{
-  "success": false,
-  "error": {
-    "code": "access_blocked",
-    "message": "The listing website blocked automated access.",
-    "retryable": false
-  }
-}
-```
+1. Call `POST /api/v1/listings/extract` with a Zillow or Redfin URL.
+2. Send the extraction result to `POST /api/v1/properties/verify` with any corrected fields.
+3. Send the verified property to `POST /api/v1/analyses/run` for deterministic underwriting.
+4. Optionally send the verified property plus underwriting result to `POST /api/v1/research/run` for deterministic research aggregation.
+5. Send the verified property, extraction, research package, and underwriting result to `POST /api/v1/agent-research/run` for evidence-backed specialist-agent outputs.
 
-## Verification and underwriting flow
+The Swagger docs are the easiest place to inspect the exact request and response schemas for each step.
 
-The current Milestone 2 flow is:
+## Agent research workflow
 
-1. Extract a property from a supported listing URL with `POST /api/v1/listings/extract`.
-2. Send that extraction result to `POST /api/v1/properties/verify`.
-3. Optionally provide field corrections and confirmed fields.
-4. Send the verified property snapshot plus underwriting assumptions to `POST /api/v1/analyses/run`.
+The structured agent workflow is designed to stay narrow and auditable.
 
-The underwriting engine is fully deterministic. It does not use AI models, live comparable research, or external decisioning.
+It currently includes:
 
-## New endpoints
+- Listing agent
+- Public records agent
+- Comparable agent
+- Neighborhood agent
+- Property risk agent
+- Deterministic orchestration, conflict handling, and unified synthesis
 
-`POST /api/v1/properties/verify`
+It does not generate a final buy/pass recommendation.
 
-This endpoint converts an extraction result into a verified property snapshot that keeps:
+The final package preserves:
 
-- Extracted value
-- Final value
-- Verification status
-- Source
-- Confidence
-- Whether the user modified the field
+- Agent-specific outputs
+- Evidence references
+- Source and citation ownership
+- Conflicts and conflict status
+- Missing information
+- Due-diligence questions
+- Usage totals
+- Trace metadata
+- Warnings and partial-failure status
 
-It is intended to support the future “review and correct” workflow before analysis runs.
+## Tracing and hardening
 
-Example shape:
+The current agent workflow includes:
 
-```json
-{
-  "extraction": {
-    "provider": "zillow",
-    "source_url": "https://www.zillow.com/homedetails/example",
-    "property": {
-      "source_url": "https://www.zillow.com/homedetails/example",
-      "provider": "zillow",
-      "address": {
-        "full_address": "123 Main St, Dallas, TX 75001"
-      },
-      "asking_price": "300000"
-    },
-    "metadata": {
-      "extraction_method": "hasdata_api",
-      "fields_found": 2,
-      "fields_missing": [],
-      "warnings": []
-    },
-    "field_provenance": {}
-  },
-  "corrections": {
-    "annual_hoa": "0"
-  },
-  "confirmed_fields": ["asking_price"]
-}
-```
+- OpenAI tracing integration toggle
+- Workflow names and prompt-version reporting
+- Agent and tool lifecycle summaries
+- Sensitive-data exclusion by default
+- Prompt-injection sanitization for untrusted research text
+- Evidence validation and source ownership checks
+- Fair-housing guardrails for neighborhood outputs
+- Regression fixtures for conflict recall, evidence coverage, and missing-data recall
 
-`POST /api/v1/analyses/run`
+Sensitive research text is sanitized before it reaches the agents, and raw HTML, cookies, and secrets are not passed through typed agent tools.
 
-This endpoint runs deterministic underwriting from a verified property snapshot plus user-supplied assumptions.
+## Environment variables
 
-The analysis currently returns:
+Important variables include:
 
-- Acquisition breakdown
-- Financing results
-- Income results
-- Operating expenses
-- NOI
-- Monthly and annual pre-tax cash flow
-- Cap rate
-- Cash-on-cash return
-- DSCR
-- Gross rent multiplier
-- Operating expense ratio
-- Break-even occupancy
-- Rent-to-price ratio
-- Maximum-offer thresholds
-- Three scenarios: `conservative`, `expected`, `optimistic`
-- Twelve stress tests
-- Warnings when assumptions look risky or incomplete
+- `HASDATA_API_KEY`
+- `HASDATA_API_KEY_FILE`
+- `ZILLOW_USE_HASDATA`
+- `OPENAI_API_KEY`
+- `OPENAI_AGENT_MODEL`
+- `OPENAI_AGENT_PROMPT_VERSION`
+- `OPENAI_AGENT_MAX_TURNS`
+- `OPENAI_AGENT_TIMEOUT_SECONDS`
+- `OPENAI_AGENT_WORKFLOW_TIMEOUT_SECONDS`
+- `OPENAI_AGENT_MAX_PARALLEL_AGENTS`
+- `OPENAI_AGENT_RETRY_ATTEMPTS`
+- `OPENAI_AGENT_TRACING_ENABLED`
+- `OPENAI_AGENT_WORKFLOW_NAME`
+- `OPENAI_AGENT_TRACE_SENSITIVE_DATA`
+- `ENABLE_LIVE_AGENT_RESEARCH_TESTS`
 
-## Main files for Milestone 2
+See [.env.example](/Users/bhaskar/Downloads/RealEstateAnalyzer/.env.example) for defaults.
 
-- `app/api/analysis_routes.py`
-  - Adds `POST /api/v1/properties/verify` and `POST /api/v1/analyses/run`
-- `app/models/verification.py`
-  - Verified snapshot and field status models
-- `app/models/assumptions.py`
-  - Underwriting input assumptions and presets
-- `app/models/underwriting.py`
-  - Analysis output models
-- `app/services/property_verification_service.py`
-  - Builds verified property snapshots from extraction output plus corrections
-- `app/services/underwriting_service.py`
-  - Main deterministic underwriting orchestration
-- `app/calculations/`
-  - Reusable financial calculation helpers
-- `app/presets/analysis_presets.py`
-  - Conservative, standard, aggressive, and custom preset values
+## Optional live agent test
 
-## How to run the full current flow
+Normal tests are fully mocked and do not require live OpenAI calls.
 
-Start the API:
+If you want to run the manual live agent integration test, set:
 
 ```bash
-uv run uvicorn app.main:app --reload
+export ENABLE_LIVE_AGENT_RESEARCH_TESTS=true
+export OPENAI_API_KEY=your_key_here
 ```
 
-Extract a listing:
+Then run:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/api/v1/listings/extract \
-  -H "Content-Type: application/json" \
-  -d '{"url":"https://www.zillow.com/homedetails/1620-Sunnybrook-Dr-Irving-TX-75061/27118489_zpid/"}'
+uv run pytest tests/test_agent_research_live.py
 ```
 
-Verify the extracted property:
-
-```bash
-curl -X POST http://127.0.0.1:8000/api/v1/properties/verify \
-  -H "Content-Type: application/json" \
-  -d '{
-    "extraction": {
-      "provider": "zillow",
-      "source_url": "https://www.zillow.com/homedetails/1620-Sunnybrook-Dr-Irving-TX-75061/27118489_zpid/",
-      "property": {
-        "source_url": "https://www.zillow.com/homedetails/1620-Sunnybrook-Dr-Irving-TX-75061/27118489_zpid/",
-        "provider": "zillow",
-        "address": {
-          "full_address": "1620 Sunnybrook Dr, Irving, TX 75061"
-        },
-        "asking_price": "444000",
-        "bedrooms": "4",
-        "bathrooms": "3",
-        "year_built": 1958,
-        "property_type": "single_family"
-      },
-      "metadata": {
-        "extraction_method": "hasdata_api",
-        "fields_found": 15,
-        "fields_missing": ["square_feet", "annual_property_tax", "annual_hoa"],
-        "warnings": []
-      }
-    },
-    "confirmed_fields": [
-      "full_address",
-      "asking_price",
-      "bedrooms",
-      "bathrooms",
-      "year_built",
-      "property_type"
-    ],
-    "corrections": {
-      "annual_hoa": "0"
-    }
-  }'
-```
-
-Run deterministic underwriting:
-
-```bash
-curl -X POST http://127.0.0.1:8000/api/v1/analyses/run \
-  -H "Content-Type: application/json" \
-  -d '{
-    "property": {
-      "source_url": "https://www.zillow.com/homedetails/1620-Sunnybrook-Dr-Irving-TX-75061/27118489_zpid/",
-      "provider": "zillow",
-      "full_address": {
-        "extracted_value": "1620 Sunnybrook Dr, Irving, TX 75061",
-        "final_value": "1620 Sunnybrook Dr, Irving, TX 75061",
-        "status": "verified",
-        "source": "hasdata_api",
-        "confidence": "0.5",
-        "user_modified": false
-      },
-      "asking_price": {
-        "extracted_value": "444000",
-        "final_value": "444000",
-        "status": "verified",
-        "source": "hasdata_api",
-        "confidence": "0.5",
-        "user_modified": false
-      },
-      "bedrooms": {
-        "extracted_value": "4",
-        "final_value": "4",
-        "status": "verified",
-        "source": "hasdata_api",
-        "confidence": "0.5",
-        "user_modified": false
-      },
-      "bathrooms": {
-        "extracted_value": "3",
-        "final_value": "3",
-        "status": "verified",
-        "source": "hasdata_api",
-        "confidence": "0.5",
-        "user_modified": false
-      },
-      "square_feet": {
-        "extracted_value": null,
-        "final_value": null,
-        "status": "missing",
-        "source": null,
-        "confidence": null,
-        "user_modified": false
-      },
-      "lot_square_feet": {
-        "extracted_value": null,
-        "final_value": null,
-        "status": "missing",
-        "source": null,
-        "confidence": null,
-        "user_modified": false
-      },
-      "year_built": {
-        "extracted_value": 1958,
-        "final_value": 1958,
-        "status": "verified",
-        "source": "hasdata_api",
-        "confidence": "0.5",
-        "user_modified": false
-      },
-      "annual_property_tax": {
-        "extracted_value": null,
-        "final_value": null,
-        "status": "missing",
-        "source": null,
-        "confidence": null,
-        "user_modified": false
-      },
-      "annual_hoa": {
-        "extracted_value": null,
-        "final_value": "0",
-        "status": "corrected",
-        "source": null,
-        "confidence": null,
-        "user_modified": true
-      },
-      "property_type": {
-        "extracted_value": "single_family",
-        "final_value": "single_family",
-        "status": "verified",
-        "source": "hasdata_api",
-        "confidence": "0.5",
-        "user_modified": false
-      }
-    },
-    "assumptions": {
-      "purchase_price": "444000",
-      "preset": "standard",
-      "financing": {
-        "type": "conventional",
-        "down_payment_percent": "20",
-        "interest_rate_percent": "6.75",
-        "loan_term_years": 30,
-        "points": "0",
-        "additional_lender_fees": "0",
-        "monthly_mortgage_insurance": "0"
-      },
-      "acquisition": {
-        "closing_cost_percent": "3",
-        "lender_fees": "0",
-        "repairs": "5000",
-        "initial_reserves": "5000",
-        "other_acquisition_costs": "0"
-      },
-      "income": {
-        "monthly_rent": "3200",
-        "other_monthly_income": "0",
-        "vacancy_percent": "5"
-      },
-      "expenses": {
-        "annual_property_taxes": "8000",
-        "annual_insurance": "2500",
-        "annual_hoa": "0",
-        "management_percent": "8",
-        "maintenance_percent": "5",
-        "capex_percent": "5",
-        "leasing_fee_percent": "50",
-        "tenant_turnover_frequency_years": "2",
-        "turnover_cost": "1500",
-        "owner_paid_utilities_monthly": "0",
-        "landscaping_monthly": "50",
-        "pest_control_monthly": "0",
-        "other_monthly_expenses": "0",
-        "other_annual_expenses": "0"
-      }
-    }
-  }'
-```
-
-For this example property, the analysis returns a negative monthly cash flow and a DSCR below `1.0`, which is exactly the kind of deterministic screening output this milestone is designed to produce.
-
-The easiest way to explore the exact request and response schemas is still `http://127.0.0.1:8000/docs`.
-
-## Supported providers
-
-- Zillow
-- Redfin
-
-## Architecture
-
-- `ProviderRegistry` selects the adapter based on the incoming listing URL.
-- `ListingService` coordinates provider selection, static HTTP fetch, Playwright fallback, parsing, and response shaping.
-- `PropertyVerificationService` converts extraction output into a verified property snapshot with field status tracking.
-- `UnderwritingService` runs deterministic acquisition, financing, income, expense, return, scenario, stress-test, and maximum-offer calculations.
-- `ZillowProvider` can bypass page fetching entirely by calling HasData's Zillow Property API when `HASDATA_API_KEY` is configured.
-- `RedfinProvider` can bypass page fetching entirely by calling HasData's Redfin Property API when `HASDATA_API_KEY` is configured.
-- `PageFetcher` handles SSRF protections, redirects, size limits, and blocked-page detection.
-- `PlaywrightPageFetcher` is used only when static content is insufficient or provider parsing still lacks enough core fields.
-- Provider adapters prefer structured data first:
-  - JSON-LD
-  - Embedded application JSON
-  - Provider-specific page state
-  - HTML metadata
-  - Visible HTML fallback
-
-## Logging
-
-The API logs:
-
-- Request ID
-- Provider
-- Domain
-- Fetch method
-- Fetch duration
-- Parsing duration
-- Number of fields found
-- Warning count
-- Error code
-
-Full page HTML, cookies, and sensitive headers are not logged.
+If the flag is not set, the live test is skipped automatically.
 
 ## Docker
 
@@ -552,32 +298,63 @@ Build and run with Docker Compose:
 docker compose up --build
 ```
 
-The API will be available at `http://localhost:8000`.
+The API will be available at `http://127.0.0.1:8000`.
 
-## Testing
+The compose file now:
 
-- Unit and integration tests do not make live requests to listing sites.
-- Provider parsing is validated against stored HTML fixtures.
-- API tests exercise the route, service layer, fallback path, and structured error handling.
-- Deterministic underwriting tests cover calculations, verification, scenarios, stress tests, maximum-offer logic, and analysis API responses.
+- Mounts `./secrets` into `/app/secrets` as read-only
+- Passes through the HasData, OpenAI, tracing, and agent workflow environment variables
+- Defaults `HASDATA_API_KEY_FILE` to `/app/secrets/hasdata_api_key.txt` inside the container
 
-## Current limitations
+To validate the compose configuration without starting containers:
 
-- Provider parsing is tested against stored HTML fixtures rather than live site requests.
-- Fixture coverage currently includes one successful sample per provider plus partial-data scenarios.
-- Provider schemas will need continued maintenance as listing sites evolve.
-- This milestone does not persist listings.
-- The underwriting engine is deterministic only and does not yet include rent-comparable research, public-record enrichment, neighborhood intelligence, risk scoring, or recommendation synthesis.
+```bash
+docker compose config
+```
 
-## Troubleshooting
+The Docker image installs Chromium for the Playwright fallback path.
 
-- If Zillow or Redfin returns CAPTCHA or access-blocked errors through live page fetching, configure `HASDATA_API_KEY` or `HASDATA_API_KEY_FILE` so those providers can use the HasData property endpoints instead.
-- If a direct HasData `curl` works but the app still reports an older auth or fetch error, restart the FastAPI server. The most common cause is a stale running `uvicorn` process that has not reloaded the newest code or key configuration.
+## Testing strategy
 
-## How to add another provider
+The repository uses fixture-based and mocked tests for normal development:
 
-1. Add a new provider adapter under `app/providers/`.
-2. Implement `can_handle()` and `extract()` against the shared `ListingProvider` interface.
-3. Register the provider in `ProviderRegistry.default()`.
-4. Add sanitized fixture HTML under `tests/fixtures/`.
-5. Add provider parsing tests and, when useful, API integration coverage.
+- Listing provider parsing tests use sanitized HTML fixtures
+- Fetcher tests mock HTTP and Playwright behavior
+- Research-provider tests use deterministic fixture data
+- Agent tests mock model execution by default
+- Evaluation tests cover evidence coverage, conflict recall, missing-data recall, prompt-injection handling, and fair-housing guardrails
+
+Run the full validation suite with:
+
+```bash
+uv run pytest
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy app
+```
+
+## Notes on real-world scraping behavior
+
+Zillow and Redfin often block direct automated browsing. The application therefore supports HasData-backed provider integrations for those sites. When direct page access is blocked, the service returns structured errors instead of trying to bypass CAPTCHA systems.
+
+## Extending the system
+
+To add another listing or research provider:
+
+1. Add a provider implementation under `app/providers/`.
+2. Reuse the shared models and provider interfaces instead of introducing provider-specific response shapes.
+3. Register the provider in the appropriate registry.
+4. Add fixture-based tests under `tests/fixtures/` and `tests/`.
+5. Keep provenance, confidence, and structured warnings intact.
+
+## Current status summary
+
+The repository now supports:
+
+- Listing ingestion and extraction
+- Property verification
+- Deterministic underwriting
+- Deterministic research aggregation
+- Structured specialist-agent research synthesis
+- Traceable evidence and conflict handling
+- Mocked regression and hardening coverage

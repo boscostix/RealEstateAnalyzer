@@ -187,6 +187,11 @@ class AgentExecutionMetadata(AgentModel):
     total_duration_ms: int = 0
     agent_latencies_ms: dict[str, int] = Field(default_factory=dict)
     traced: bool = False
+    usage_requests: int = 0
+    usage_input_tokens: int = 0
+    usage_output_tokens: int = 0
+    usage_total_tokens: int = 0
+    trace_metadata: dict[str, str] = Field(default_factory=dict)
     partial_failure: bool = False
     warnings: list[str] = Field(default_factory=list)
 
@@ -195,6 +200,18 @@ class AgentExecutionMetadata(AgentModel):
     def validate_total_duration_ms(cls, value: int) -> int:
         if value < 0:
             raise ValueError("total_duration_ms must be non-negative.")
+        return value
+
+    @field_validator(
+        "usage_requests",
+        "usage_input_tokens",
+        "usage_output_tokens",
+        "usage_total_tokens",
+    )
+    @classmethod
+    def validate_usage_counts(cls, value: int) -> int:
+        if value < 0:
+            raise ValueError("usage counts must be non-negative.")
         return value
 
     @field_validator("agent_latencies_ms")

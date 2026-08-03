@@ -23,7 +23,7 @@ from app.agent_research.models import (
     ResearchConflict,
     UnifiedAgentResearchPackage,
 )
-from app.agent_research.orchestration_models import SpecialistWorkflowResult
+from app.agent_research.orchestration_models import AgentRunRecord, SpecialistWorkflowResult
 from app.agent_research.orchestrator import SpecialistAgentOrchestrator
 from app.agent_research.risk_models import PropertyRiskAgentOutput
 from app.agent_research.services import PropertyRiskAgentService
@@ -102,6 +102,7 @@ class UnifiedSynthesisService:
         overall_data_confidence = Decimal("0")
         synthesis_warnings: list[str] = []
         risk_analysis: PropertyRiskAgentOutput | None = None
+        risk_record: AgentRunRecord | None = None
         risk_warning: str | None = None
         risk_duration_ms = 0
 
@@ -138,7 +139,12 @@ class UnifiedSynthesisService:
                 upstream_warnings=specialist_result.warnings,
             )
             try:
-                risk_analysis = await self._risk_agent_service.run(context, built_input=risk_input)
+                risk_run_result = await self._risk_agent_service.run_with_record(
+                    context,
+                    built_input=risk_input,
+                )
+                risk_analysis = risk_run_result.output
+                risk_record = risk_run_result.record
             except Exception as exc:  # pragma: no cover - exercised via service stubs in API tests
                 risk_warning = str(exc)
             risk_duration_ms = int((time.perf_counter() - risk_started) * 1000)
@@ -189,6 +195,7 @@ class UnifiedSynthesisService:
             comparable_analysis=comparable_analysis,
             neighborhood_analysis=neighborhood_analysis,
             risk_analysis=risk_analysis,
+            risk_record=risk_record,
             risk_duration_ms=risk_duration_ms,
             total_duration_ms=int((time.perf_counter() - started_perf) * 1000),
             warnings=warnings,
@@ -385,6 +392,7 @@ class UnifiedSynthesisService:
         comparable_analysis: AgentResearchOutput | None,
         neighborhood_analysis: AgentResearchOutput | None,
         risk_analysis: PropertyRiskAgentOutput | None,
+        risk_record: AgentRunRecord | None,
         risk_duration_ms: int,
         total_duration_ms: int,
         warnings: list[str],
@@ -407,6 +415,33 @@ class UnifiedSynthesisService:
         }
         if risk_analysis is not None:
             agent_latencies_ms[str(risk_analysis.agent_name)] = risk_duration_ms
+        usage_requests = specialist_metadata.usage.requests + (
+            0 if risk_record is None else risk_record.usage.requests
+        )
+        usage_input_tokens = specialist_metadata.usage.input_tokens + (
+            0 if risk_record is None else risk_record.usage.input_tokens
+        )
+        usage_output_tokens = specialist_metadata.usage.output_tokens + (
+            0 if risk_record is None else risk_record.usage.output_tokens
+        )
+        usage_total_tokens = specialist_metadata.usage.total_tokens + (
+            0 if risk_record is None else risk_record.usage.total_tokens
+        )
+        trace_metadata = dict(specialist_metadata.trace_metadata)
+        trace_metadata["workflow_name"] = specialist_metadata.workflow_name
+        trace_metadata["prompt_version"] = self._prompt_version(outputs)
+        trace_metadata["trace_enabled"] = str(
+            self._specialist_orchestrator._config.tracing.enabled  # noqa: SLF001
+        ).lower()
+        if risk_record is not None:
+            trace_metadata["risk_tool_call_count"] = risk_record.trace_metadata.get(
+                "tool_call_count",
+                "0",
+            )
+            trace_metadata["risk_llm_call_count"] = risk_record.trace_metadata.get(
+                "llm_call_count",
+                "0",
+            )
         return AgentExecutionMetadata(
             request_id=request_id,
             workflow_name=specialist_metadata.workflow_name,
@@ -418,7 +453,12 @@ class UnifiedSynthesisService:
             completed_at=datetime.now(UTC),
             total_duration_ms=total_duration_ms,
             agent_latencies_ms=agent_latencies_ms,
-            traced=False,
+            traced=self._specialist_orchestrator._config.tracing.enabled,  # noqa: SLF001
+            usage_requests=usage_requests,
+            usage_input_tokens=usage_input_tokens,
+            usage_output_tokens=usage_output_tokens,
+            usage_total_tokens=usage_total_tokens,
+            trace_metadata=trace_metadata,
             partial_failure=(specialist_metadata.partial_failure or risk_analysis is None),
             warnings=warnings,
         )

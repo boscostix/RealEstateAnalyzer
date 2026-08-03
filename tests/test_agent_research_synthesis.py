@@ -13,6 +13,7 @@ from app.agent_research.models import EvidenceReference, EvidenceSourceType, Fin
 from app.agent_research.orchestration_models import (
     AgentRunRecord,
     AgentRunStatus,
+    AgentUsageSummary,
     SpecialistWorkflowMetadata,
     SpecialistWorkflowResponse,
     SpecialistWorkflowResult,
@@ -86,6 +87,8 @@ def build_workflow_response(
         completed_agents=[name for name, output in outputs.items() if output is not None],
         failed_agents=[name for name, output in outputs.items() if output is None],
         partial_failure=not all(output is not None for output in outputs.values()),
+        usage=AgentUsageSummary(requests=4, input_tokens=400, output_tokens=200, total_tokens=600),
+        trace_metadata={"request_id": "req-123", "prompt_version": "v1"},
         run_records=run_records,
     )
     return SpecialistWorkflowResponse(
@@ -120,9 +123,20 @@ class StubRiskService:
     def __init__(self, output: PropertyRiskAgentOutput) -> None:
         self.output = output
 
-    async def run(self, context: object, *, built_input: object) -> PropertyRiskAgentOutput:
+    async def run_with_record(self, context: object, *, built_input: object) -> object:
         del context, built_input
-        return self.output
+        from app.agent_research.orchestration_models import AgentRunRecord, AgentRunStatus
+        from app.agent_research.services import ServiceRunResult
+
+        return ServiceRunResult(
+            output=self.output,
+            record=AgentRunRecord(
+                agent_name=AgentName.PROPERTY_RISK,
+                status=AgentRunStatus.COMPLETED,
+                duration_ms=5,
+                output_available=True,
+            ),
+        )
 
 
 @pytest.mark.asyncio
@@ -163,6 +177,9 @@ async def test_unified_synthesis_service_returns_strict_package() -> None:
     assert response.package.listing_analysis is not None
     assert response.package.risk_analysis is not None
     assert response.package.execution_metadata.partial_failure is False
+    assert response.package.execution_metadata.traced is True
+    assert response.package.execution_metadata.usage_requests >= 4
+    assert response.package.execution_metadata.prompt_version == "v1"
     assert response.package.overall_data_confidence > Decimal("0")
 
 
