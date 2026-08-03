@@ -7,6 +7,7 @@ import os
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.agent_research.versioning import PROMPT_VERSION, WORKFLOW_NAME
+from app.utils.openai_api_key import ensure_openai_api_key_env
 
 
 class AgentTracingConfig(BaseModel):
@@ -58,6 +59,7 @@ class AgentRuntimeConfig(BaseModel):
     def from_env(cls) -> AgentRuntimeConfig:
         """Load runtime configuration from environment variables."""
 
+        ensure_openai_api_key_env()
         return cls(
             model=os.getenv("OPENAI_AGENT_MODEL", "gpt-5-mini"),
             prompt_version=os.getenv("OPENAI_AGENT_PROMPT_VERSION", PROMPT_VERSION),

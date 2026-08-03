@@ -6,6 +6,8 @@ import os
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.utils.openai_api_key import ensure_openai_api_key_env
+
 
 class CommitteeTracingConfig(BaseModel):
     enabled: bool = True
@@ -37,6 +39,7 @@ class CommitteeRuntimeConfig(BaseModel):
 
     @classmethod
     def from_env(cls) -> CommitteeRuntimeConfig:
+        ensure_openai_api_key_env()
         return cls(
             model=os.getenv("OPENAI_COMMITTEE_MODEL", "gpt-5-mini"),
             prompt_version=os.getenv("OPENAI_COMMITTEE_PROMPT_VERSION", "v1"),

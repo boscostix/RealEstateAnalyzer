@@ -89,11 +89,19 @@ secrets/hasdata_api_key.txt
 
 That file should contain only the raw API key on one line.
 
-If you want to run the OpenAI-backed agent workflow locally, set:
+If you want to run the OpenAI-backed agent workflows locally, either export:
 
 ```bash
 export OPENAI_API_KEY=your_key_here
 ```
+
+or place it in:
+
+```text
+secrets/openai_api_key.txt
+```
+
+That file should contain only the raw API key on one line.
 
 The default environment variables are listed in [.env.example](/Users/bhaskar/Downloads/RealEstateAnalyzer/.env.example).
 
