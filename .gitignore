@@ -7,3 +7,13 @@ __pycache__/
 .DS_Store
 .env
 secrets/
+
+# Local API test payloads/results
+extract.json
+verify-request.json
+verify.json
+analysis-request.json
+analysis.json
+research-request.json
+research.json
+agent-research-request.json
