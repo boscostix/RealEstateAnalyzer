@@ -109,9 +109,17 @@ class AgentConflictCandidate(AgentModel):
 
     field_or_topic: str
     values_or_claims: list[str] = Field(min_length=2)
-    source_ids: list[str] = Field(min_length=2)
+    source_ids: list[str] = Field(min_length=1)
     description: str
     materiality: ConflictMateriality
+
+    @model_validator(mode="after")
+    def validate_sources(self) -> AgentConflictCandidate:
+        if len(self.source_ids) == 1 and len(self.values_or_claims) > 1:
+            self.source_ids = [self.source_ids[0]] * len(self.values_or_claims)
+        if len(self.source_ids) != len(self.values_or_claims):
+            raise ValueError("conflicts.source_ids must align with conflicts.values_or_claims.")
+        return self
 
 
 class ConflictValue(AgentModel):

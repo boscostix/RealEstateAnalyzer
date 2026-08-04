@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
@@ -37,6 +38,8 @@ from app.agent_research.specialist_models import (
 )
 from app.agent_research.tracing import build_run_config, configure_agents_tracing
 from app.agent_research.versioning import AgentName, build_agent_version
+
+logger = logging.getLogger("real_estate_analyzer.agent_services")
 
 
 class SpecialistAgentService[
@@ -143,8 +146,20 @@ class SpecialistAgentService[
                 ),
             )
         except AgentGuardrailFailureError:
+            logger.exception(
+                "Specialist agent guardrail failed request_id=%s analysis_id=%s agent=%s",
+                context.request_id,
+                context.analysis_id,
+                self._agent_name,
+            )
             raise
         except Exception as exc:
+            logger.exception(
+                "Specialist agent run failed request_id=%s analysis_id=%s agent=%s",
+                context.request_id,
+                context.analysis_id,
+                self._agent_name,
+            )
             raise AgentModelFailureError(message=str(exc)) from exc
 
 

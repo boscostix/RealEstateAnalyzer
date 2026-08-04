@@ -109,7 +109,7 @@ def build_specialist_agents(config_model: str) -> dict[AgentName, Agent[AgentRun
             ),
             output_type=output_types[definition.name],
             model=config_model,
-            model_settings=ModelSettings(temperature=0),
+            model_settings=ModelSettings(),
             tools=list(tools_for_agent(definition.name)),
             output_guardrails=guardrails_for_agent(definition.name),
         )

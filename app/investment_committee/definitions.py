@@ -27,6 +27,6 @@ def build_investment_committee_agent(model: str) -> Agent[CommitteeRunContext]:
         ),
         output_type=InvestmentCommitteeOutput,
         model=model,
-        model_settings=ModelSettings(temperature=0),
+        model_settings=ModelSettings(),
         tools=[],
     )

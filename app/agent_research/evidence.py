@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -102,6 +103,16 @@ def _iter_field_paths(node: Any, prefix: str) -> set[str]:
         for index, value in enumerate(node):
             field_paths.update(_iter_field_paths(value, f"{prefix}[{index}]"))
     return field_paths
+
+
+def _unresolved_verified_fields(property_snapshot: VerifiedPropertySnapshot) -> list[str]:
+    unresolved: list[str] = []
+    for field_name, field_value in property_snapshot.model_dump(mode="python").items():
+        if field_name in {"source_url", "provider"}:
+            continue
+        if isinstance(field_value, dict) and field_value.get("status") != "verified":
+            unresolved.append(field_name)
+    return unresolved
 
 
 def _register_source(
@@ -228,6 +239,12 @@ def build_evidence_index(context: AgentRunContext) -> EvidenceIndex:
         retrieved_at=None,
     )
     index.field_paths.update(_iter_field_paths(context.verified_property, "verified_property"))
+    index.field_paths.update(
+        _iter_field_paths(
+            _unresolved_verified_fields(context.verified_property),
+            "unresolved_verified_fields",
+        )
+    )
 
     if context.listing_extraction is not None:
         listing_source_id = _source_id(property_key, "listing_extraction")
@@ -244,8 +261,31 @@ def build_evidence_index(context: AgentRunContext) -> EvidenceIndex:
             _iter_field_paths(context.listing_extraction.property, "listing.property")
         )
         index.field_paths.update(
+            _iter_field_paths(context.listing_extraction.property, "listing_snapshot.property")
+        )
+        index.field_paths.update(
             _iter_field_paths(
                 context.listing_extraction.field_provenance, "listing.field_provenance"
+            )
+        )
+        index.field_paths.update(
+            _iter_field_paths(
+                context.listing_extraction.field_provenance, "listing_snapshot.field_provenance"
+            )
+        )
+        index.field_paths.update(
+            _iter_field_paths(context.listing_extraction.metadata, "listing_snapshot.metadata")
+        )
+        index.field_paths.update(
+            _iter_field_paths(
+                context.listing_extraction.property.price_history,
+                "listing_history.price_history",
+            )
+        )
+        index.field_paths.update(
+            _iter_field_paths(
+                context.listing_extraction.property.sale_history,
+                "listing_history.sale_history",
             )
         )
 
@@ -284,6 +324,33 @@ def validate_source_ownership(source_id: str, index: EvidenceIndex) -> None:
         )
 
 
+def _candidate_field_paths(raw_path: str) -> list[str]:
+    candidates: list[str] = []
+    path = raw_path.strip()
+    if not path:
+        return candidates
+    candidates.append(path)
+    if path.startswith("property."):
+        candidates.append(f"listing.property.{path.removeprefix('property.')}")
+        candidates.append(f"listing_snapshot.property.{path.removeprefix('property.')}")
+        candidates.append(f"verified_property.{path.removeprefix('property.')}")
+    elif path.startswith("field_provenance."):
+        suffix = path.removeprefix("field_provenance.")
+        candidates.append(f"listing.field_provenance.{suffix}")
+        candidates.append(f"listing_snapshot.field_provenance.{suffix}")
+    elif path.startswith("metadata."):
+        candidates.append(f"listing_snapshot.{path}")
+    elif path.startswith("price_history.") or path.startswith("sale_history."):
+        candidates.append(f"listing_history.{path}")
+    return candidates
+
+
+def _split_field_paths(field_path: str | None) -> list[str]:
+    if field_path is None:
+        return []
+    return [part.strip() for part in re.split(r"\s*(?:,|/)\s*", field_path) if part.strip()]
+
+
 def validate_evidence_reference(reference: EvidenceReference, index: EvidenceIndex) -> None:
     """Validate one evidence reference against the current evidence index."""
 
@@ -301,16 +368,34 @@ def validate_evidence_reference(reference: EvidenceReference, index: EvidenceInd
                 message="Referenced citation_id does not belong to the provided source_id.",
             )
 
-    if reference.field_path is not None and reference.field_path not in index.field_paths:
-        raise EvidenceValidationFailureError(message="Referenced field_path is not available.")
-
-    if reference.source_type == EvidenceSourceType.VERIFIED_PROPERTY and (
-        reference.field_path is None or not reference.field_path.startswith("verified_property")
+    if reference.field_path is not None and not all(
+        any(candidate in index.field_paths for candidate in _candidate_field_paths(reference_path))
+        for reference_path in _split_field_paths(reference.field_path)
     ):
         raise EvidenceValidationFailureError(
-            message="Verified-property evidence must reference a verified_property field path.",
+            message=(
+                "Referenced field_path is not available: "
+                f"{reference.field_path} (source_id={reference.source_id})"
+            )
         )
-    if reference.source_type == EvidenceSourceType.UNDERWRITING and (
+
+    source_kind = str(source.source_kind)
+
+    if source_kind == str(EvidenceSourceType.VERIFIED_PROPERTY) and (
+        reference.field_path is None
+        or not any(
+            candidate.startswith("verified_property")
+            for reference_path in _split_field_paths(reference.field_path)
+            for candidate in _candidate_field_paths(reference_path)
+        )
+    ):
+        raise EvidenceValidationFailureError(
+            message=(
+                "Verified-property evidence must reference a verified_property field path: "
+                f"{reference.field_path} (source_id={reference.source_id})"
+            ),
+        )
+    if source_kind == str(EvidenceSourceType.UNDERWRITING) and (
         reference.field_path is None or not reference.field_path.startswith("underwriting")
     ):
         raise EvidenceValidationFailureError(
