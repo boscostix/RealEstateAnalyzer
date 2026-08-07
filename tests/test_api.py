@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 from fastapi.testclient import TestClient
 
 from app.api.routes import get_listing_service
 from app.exceptions import AccessBlockedError
 from app.main import app
-from app.models.extraction import FetchedPage
+from app.models.extraction import FetchedPage, FetchMethod
 from app.providers.zillow import ZillowProvider
+from app.services.hasdata_zillow_client import HasDataZillowClient
 from app.services.listing_service import ListingService
+from app.services.page_fetcher import PageFetcher, PlaywrightPageFetcher
 from app.services.provider_registry import ProviderRegistry
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -24,7 +27,13 @@ def load_fixture(name: str) -> str:
 
 
 class FixtureFetcher:
-    def __init__(self, html: str, *, final_url: str, fetch_method: str = "http") -> None:
+    def __init__(
+        self,
+        html: str,
+        *,
+        final_url: str,
+        fetch_method: FetchMethod = "http",
+    ) -> None:
         self._html = html
         self._final_url = final_url
         self._fetch_method = fetch_method
@@ -42,6 +51,7 @@ class FixtureFetcher:
 
 class BlockedFetcher:
     async def fetch(self, url: str) -> FetchedPage:
+        del url
         raise AccessBlockedError()
 
 
@@ -57,7 +67,9 @@ class DisabledHasDataClient:
 
 
 def build_test_registry() -> ProviderRegistry:
-    return ProviderRegistry([ZillowProvider(hasdata_client=DisabledHasDataClient())])
+    return ProviderRegistry(
+        [ZillowProvider(hasdata_client=cast(HasDataZillowClient, DisabledHasDataClient()))]
+    )
 
 
 def override_with_service(service: object) -> None:
@@ -71,14 +83,20 @@ def clear_overrides() -> None:
 def test_extract_listing_returns_provider_for_supported_url() -> None:
     service = ListingService(
         registry=build_test_registry(),
-        page_fetcher=FixtureFetcher(
-            load_fixture("zillow_listing.html"),
-            final_url="https://www.zillow.com/homedetails/example",
+        page_fetcher=cast(
+            PageFetcher,
+            FixtureFetcher(
+                load_fixture("zillow_listing.html"),
+                final_url="https://www.zillow.com/homedetails/example",
+            ),
         ),
-        playwright_fetcher=FixtureFetcher(
-            load_fixture("zillow_listing.html"),
-            final_url="https://www.zillow.com/homedetails/example",
-            fetch_method="playwright",
+        playwright_fetcher=cast(
+            PlaywrightPageFetcher,
+            FixtureFetcher(
+                load_fixture("zillow_listing.html"),
+                final_url="https://www.zillow.com/homedetails/example",
+                fetch_method="playwright",
+            ),
         ),
     )
     override_with_service(service)
@@ -104,14 +122,20 @@ def test_extract_listing_returns_provider_for_supported_url() -> None:
 def test_extract_listing_uses_playwright_fallback_when_http_result_is_insufficient() -> None:
     service = ListingService(
         registry=build_test_registry(),
-        page_fetcher=FixtureFetcher(
-            load_fixture("zillow_partial.html"),
-            final_url="https://www.zillow.com/homedetails/example",
+        page_fetcher=cast(
+            PageFetcher,
+            FixtureFetcher(
+                load_fixture("zillow_partial.html"),
+                final_url="https://www.zillow.com/homedetails/example",
+            ),
         ),
-        playwright_fetcher=FixtureFetcher(
-            load_fixture("zillow_listing.html"),
-            final_url="https://www.zillow.com/homedetails/example",
-            fetch_method="playwright",
+        playwright_fetcher=cast(
+            PlaywrightPageFetcher,
+            FixtureFetcher(
+                load_fixture("zillow_listing.html"),
+                final_url="https://www.zillow.com/homedetails/example",
+                fetch_method="playwright",
+            ),
         ),
     )
     override_with_service(service)
@@ -170,11 +194,14 @@ def test_extract_listing_rejects_ssrf_target() -> None:
 def test_extract_listing_returns_blocked_error() -> None:
     service = ListingService(
         registry=build_test_registry(),
-        page_fetcher=BlockedFetcher(),
-        playwright_fetcher=FixtureFetcher(
-            load_fixture("zillow_listing.html"),
-            final_url="https://www.zillow.com/homedetails/example",
-            fetch_method="playwright",
+        page_fetcher=cast(PageFetcher, BlockedFetcher()),
+        playwright_fetcher=cast(
+            PlaywrightPageFetcher,
+            FixtureFetcher(
+                load_fixture("zillow_listing.html"),
+                final_url="https://www.zillow.com/homedetails/example",
+                fetch_method="playwright",
+            ),
         ),
     )
     override_with_service(service)

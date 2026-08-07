@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from decimal import Decimal
 from pathlib import Path
+from typing import Any
 
 from app.agent_research.models import (
     ConflictMateriality,
@@ -24,7 +25,7 @@ from tests.test_investment_committee_policies import make_committee_input
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "investment_committee_evaluation_cases.json"
 
 
-def load_cases() -> dict[str, dict[str, object]]:
+def load_cases() -> dict[str, dict[str, Any]]:
     payload = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
     return {case["case_id"]: case for case in payload["cases"]}
 

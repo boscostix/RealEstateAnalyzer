@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from agents.run_context import AgentHookContext, RunContextWrapper
 
-from app.agent_research.config import AgentRuntimeConfig
+from app.agent_research.config import AgentRuntimeConfig, AgentTracingConfig
 from app.agent_research.tracing import (
     build_run_config,
     build_run_hooks,
@@ -53,7 +53,11 @@ def test_configure_agents_tracing_sets_sdk_toggle(monkeypatch: pytest.MonkeyPatc
     )
 
     configure_agents_tracing(AgentRuntimeConfig())
-    configure_agents_tracing(AgentRuntimeConfig(tracing={"enabled": False, "workflow_name": "x"}))
+    configure_agents_tracing(
+        AgentRuntimeConfig(
+            tracing=AgentTracingConfig(enabled=False, workflow_name="x"),
+        )
+    )
 
     assert calls == [False, True]
 

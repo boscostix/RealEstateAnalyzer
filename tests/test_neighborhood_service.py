@@ -25,6 +25,7 @@ from app.models.neighborhood import (
 from app.models.research import (
     CacheStatus,
     ConfidenceScore,
+    ResearchDomain,
     ResearchField,
     ResearchMetadata,
     ResearchResult,
@@ -60,7 +61,7 @@ def build_result(provider: str) -> ResearchResult[NeighborhoodData]:
         retrieved_at=retrieved_at,
         metadata=ResearchMetadata(
             provider=provider,
-            domain="neighborhood",
+            domain=ResearchDomain.NEIGHBORHOOD,
             retrieved_at=retrieved_at,
             provider_latency_ms=5,
             cache_status=CacheStatus.MISS,

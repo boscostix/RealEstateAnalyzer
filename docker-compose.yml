@@ -6,10 +6,12 @@ services:
     ports:
       - "8000:8000"
     volumes:
+      - ./data:/app/data
       - ./secrets:/app/secrets:ro
     environment:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////app/data/real_estate.db}
       HASDATA_API_KEY: ${HASDATA_API_KEY:-}
       HASDATA_API_KEY_FILE: ${HASDATA_API_KEY_FILE:-/app/secrets/hasdata_api_key.txt}
       ZILLOW_USE_HASDATA: ${ZILLOW_USE_HASDATA:-true}

@@ -245,6 +245,8 @@ def test_committee_execution_metadata_rejects_negative_duration() -> None:
     started_at = datetime.now(UTC)
     with pytest.raises(ValidationError):
         CommitteeExecutionMetadata(
+            request_id="req-123",
+            workflow_name="investment_committee",
             agent_version="v1",
             prompt_version="v1",
             input_format_version="v1",

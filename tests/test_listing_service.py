@@ -6,10 +6,11 @@ from decimal import Decimal
 
 import pytest
 
-from app.models.extraction import PropertyExtractionResult
+from app.models.extraction import ExtractionMetadata, FetchedPage, PropertyExtractionResult
 from app.models.property import NormalizedProperty
 from app.providers.base import ListingProvider
 from app.services.listing_service import ListingService
+from app.services.page_fetcher import PageFetcher
 from app.services.provider_registry import ProviderRegistry
 
 
@@ -32,12 +33,12 @@ class DirectProvider(ListingProvider):
                 provider="zillow",
                 asking_price=Decimal("100"),
             ),
-            metadata={
-                "extraction_method": "hasdata_api",
-                "fields_found": 1,
-                "fields_missing": [],
-                "warnings": [],
-            },
+            metadata=ExtractionMetadata(
+                extraction_method="hasdata_api",
+                fields_found=1,
+                fields_missing=[],
+                warnings=[],
+            ),
         )
 
     async def extract(self, url: str, page: object) -> PropertyExtractionResult:
@@ -45,8 +46,9 @@ class DirectProvider(ListingProvider):
         raise AssertionError("HTML extraction should not be called when direct API succeeds.")
 
 
-class FailingFetcher:
-    async def fetch(self, url: str) -> object:
+class FailingFetcher(PageFetcher):
+    async def fetch(self, url: str) -> FetchedPage:
+        del url
         raise AssertionError("Page fetcher should not be used when direct API succeeds.")
 
 

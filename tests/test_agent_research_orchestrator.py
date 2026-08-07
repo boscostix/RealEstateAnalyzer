@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import cast
 
 import pytest
 
@@ -15,7 +16,14 @@ from app.agent_research import (
     WorkflowStatus,
 )
 from app.agent_research.exceptions import AgentModelFailureError
-from app.agent_research.services import ServiceRunResult
+from app.agent_research.orchestrator import RunWithRecordService
+from app.agent_research.services import (
+    ComparableAgentService,
+    ListingAgentService,
+    NeighborhoodAgentService,
+    PublicRecordsAgentService,
+    ServiceRunResult,
+)
 from app.agent_research.versioning import AgentName
 from tests.agent_sdk_utils import (
     make_agent_context,
@@ -149,21 +157,33 @@ class SlowService:
 
 def build_orchestrator(
     *,
-    listing_service: object | None = None,
-    public_records_service: object | None = None,
-    comparable_service: object | None = None,
-    neighborhood_service: object | None = None,
+    listing_service: RunWithRecordService | None = None,
+    public_records_service: RunWithRecordService | None = None,
+    comparable_service: RunWithRecordService | None = None,
+    neighborhood_service: RunWithRecordService | None = None,
     config: AgentRuntimeConfig | None = None,
 ) -> SpecialistAgentOrchestrator:
     return SpecialistAgentOrchestrator(
-        listing_service=listing_service
-        or StaticAgentService(AgentName.LISTING, make_listing_agent_output()),
-        public_records_service=public_records_service
-        or StaticAgentService(AgentName.PUBLIC_RECORDS, make_public_records_agent_output()),
-        comparable_service=comparable_service
-        or StaticAgentService(AgentName.COMPARABLE, make_comparable_agent_output()),
-        neighborhood_service=neighborhood_service
-        or StaticAgentService(AgentName.NEIGHBORHOOD, make_neighborhood_agent_output()),
+        listing_service=cast(
+            ListingAgentService,
+            listing_service
+            or StaticAgentService(AgentName.LISTING, make_listing_agent_output()),
+        ),
+        public_records_service=cast(
+            PublicRecordsAgentService,
+            public_records_service
+            or StaticAgentService(AgentName.PUBLIC_RECORDS, make_public_records_agent_output()),
+        ),
+        comparable_service=cast(
+            ComparableAgentService,
+            comparable_service
+            or StaticAgentService(AgentName.COMPARABLE, make_comparable_agent_output()),
+        ),
+        neighborhood_service=cast(
+            NeighborhoodAgentService,
+            neighborhood_service
+            or StaticAgentService(AgentName.NEIGHBORHOOD, make_neighborhood_agent_output()),
+        ),
         config=config or AgentRuntimeConfig(),
     )
 

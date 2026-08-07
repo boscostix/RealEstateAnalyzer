@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from decimal import Decimal
 
 from fastapi.testclient import TestClient
 
@@ -47,7 +48,7 @@ class StubSynthesisService:
             comparable_analysis=make_comparable_agent_output(),
             neighborhood_analysis=make_neighborhood_agent_output(),
             risk_analysis=make_property_risk_output(),
-            overall_data_confidence="0.78",
+            overall_data_confidence=Decimal("0.78"),
             warnings=["partial-data-warning"],
             execution_metadata=AgentExecutionMetadata(
                 request_id="req-123",

@@ -38,7 +38,9 @@ async def test_hasdata_redfin_client_fetches_property_payload() -> None:
             "https://www.redfin.com/TX/Frisco/example/home/123"
         )
 
-    assert payload["property"]["id"] == 123
+    property_payload = payload["property"]
+    assert isinstance(property_payload, dict)
+    assert property_payload["id"] == 123
 
 
 @pytest.mark.asyncio

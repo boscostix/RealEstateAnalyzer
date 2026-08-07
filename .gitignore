@@ -17,3 +17,5 @@ analysis.json
 research-request.json
 research.json
 agent-research-request.json
+real_estate.db
+data/

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import cast
 
 import pytest
 
@@ -19,11 +20,19 @@ from app.agent_research.orchestration_models import (
     SpecialistWorkflowResult,
     WorkflowStatus,
 )
+from app.agent_research.orchestrator import SpecialistAgentOrchestrator
 from app.agent_research.risk_models import (
     InspectionPriority,
     PropertyRiskAgentOutput,
     RiskCategory,
     RiskFinding,
+)
+from app.agent_research.services import PropertyRiskAgentService, ServiceRunResult
+from app.agent_research.specialist_models import (
+    ComparableAgentOutput,
+    ListingAgentOutput,
+    NeighborhoodAgentOutput,
+    PublicRecordsAgentOutput,
 )
 from app.agent_research.synthesis import UnifiedSynthesisService
 from app.agent_research.versioning import AgentName
@@ -62,6 +71,14 @@ def build_workflow_response(
         AgentName.COMPARABLE: make_comparable_agent_output() if comparable else None,
         AgentName.NEIGHBORHOOD: make_neighborhood_agent_output() if neighborhood else None,
     }
+    listing_output = cast(ListingAgentOutput | None, outputs[AgentName.LISTING])
+    public_records_output = cast(
+        PublicRecordsAgentOutput | None, outputs[AgentName.PUBLIC_RECORDS]
+    )
+    comparable_output = cast(ComparableAgentOutput | None, outputs[AgentName.COMPARABLE])
+    neighborhood_output = cast(
+        NeighborhoodAgentOutput | None, outputs[AgentName.NEIGHBORHOOD]
+    )
     run_records = [
         AgentRunRecord(
             agent_name=agent_name,
@@ -94,10 +111,10 @@ def build_workflow_response(
     return SpecialistWorkflowResponse(
         success=True,
         result=SpecialistWorkflowResult(
-            listing_analysis=outputs[AgentName.LISTING],
-            public_records_analysis=outputs[AgentName.PUBLIC_RECORDS],
-            comparable_analysis=outputs[AgentName.COMPARABLE],
-            neighborhood_analysis=outputs[AgentName.NEIGHBORHOOD],
+            listing_analysis=listing_output,
+            public_records_analysis=public_records_output,
+            comparable_analysis=comparable_output,
+            neighborhood_analysis=neighborhood_output,
             metadata=metadata,
             warnings=[],
         ),
@@ -123,10 +140,10 @@ class StubRiskService:
     def __init__(self, output: PropertyRiskAgentOutput) -> None:
         self.output = output
 
-    async def run_with_record(self, context: object, *, built_input: object) -> object:
+    async def run_with_record(
+        self, context: object, *, built_input: object
+    ) -> ServiceRunResult[PropertyRiskAgentOutput]:
         del context, built_input
-        from app.agent_research.orchestration_models import AgentRunRecord, AgentRunStatus
-        from app.agent_research.services import ServiceRunResult
 
         return ServiceRunResult(
             output=self.output,
@@ -166,8 +183,11 @@ async def test_unified_synthesis_service_returns_strict_package() -> None:
         )
     ]
     service = UnifiedSynthesisService(
-        specialist_orchestrator=StubSpecialistOrchestrator(build_workflow_response()),
-        risk_agent_service=StubRiskService(risk_output),
+        specialist_orchestrator=cast(
+            SpecialistAgentOrchestrator,
+            StubSpecialistOrchestrator(build_workflow_response()),
+        ),
+        risk_agent_service=cast(PropertyRiskAgentService, StubRiskService(risk_output)),
     )
 
     response = await service.run(request_id="req-123", payload=request)
@@ -186,10 +206,14 @@ async def test_unified_synthesis_service_returns_strict_package() -> None:
 @pytest.mark.asyncio
 async def test_unified_synthesis_service_exposes_partial_failures_and_skips_risk() -> None:
     service = UnifiedSynthesisService(
-        specialist_orchestrator=StubSpecialistOrchestrator(
-            build_workflow_response(neighborhood=False)
+        specialist_orchestrator=cast(
+            SpecialistAgentOrchestrator,
+            StubSpecialistOrchestrator(build_workflow_response(neighborhood=False)),
         ),
-        risk_agent_service=StubRiskService(make_property_risk_output()),
+        risk_agent_service=cast(
+            PropertyRiskAgentService,
+            StubRiskService(make_property_risk_output()),
+        ),
     )
 
     response = await service.run(request_id="req-123", payload=build_request())

@@ -9,7 +9,10 @@ from app.main import app
 from app.models.research_package import ResearchPackageRequest
 from app.services.research_orchestrator import ResearchOrchestrator
 from tests.test_research_orchestrator import (
-    StaticService,
+    as_neighborhood_service,
+    as_public_records_service,
+    as_rental_comps_service,
+    as_sales_comps_service,
     build_neighborhood_response,
     build_property,
     build_public_records_response,
@@ -22,10 +25,10 @@ client = TestClient(app, raise_server_exceptions=False)
 
 def override_research_orchestrator() -> ResearchOrchestrator:
     return ResearchOrchestrator(
-        public_records_service=StaticService(build_public_records_response()),
-        sales_comps_service=StaticService(build_sales_response()),
-        rental_comps_service=StaticService(build_rental_response()),
-        neighborhood_service=StaticService(build_neighborhood_response()),
+        public_records_service=as_public_records_service(build_public_records_response()),
+        sales_comps_service=as_sales_comps_service(build_sales_response()),
+        rental_comps_service=as_rental_comps_service(build_rental_response()),
+        neighborhood_service=as_neighborhood_service(build_neighborhood_response()),
     )
 
 

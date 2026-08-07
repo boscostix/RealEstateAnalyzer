@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from pytest import MonkeyPatch
+
 from app.research.config import ResearchConfig
 
 
-def test_research_config_reads_environment(monkeypatch: object) -> None:
+def test_research_config_reads_environment(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv("RESEARCH_CACHE_ENABLED", "false")
     monkeypatch.setenv("RESEARCH_CACHE_TTL_SECONDS", "7200")
     monkeypatch.setenv("RESEARCH_PROVIDER_TIMEOUT_SECONDS", "12.5")

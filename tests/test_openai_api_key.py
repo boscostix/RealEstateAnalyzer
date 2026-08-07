@@ -5,11 +5,13 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from pytest import MonkeyPatch
+
 from app.utils.openai_api_key import ensure_openai_api_key_env, resolve_openai_api_key
 
 
 def test_resolve_openai_api_key_reads_fallback_file(
-    monkeypatch,
+    monkeypatch: MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     key_file = tmp_path / "openai_api_key.txt"
@@ -21,7 +23,7 @@ def test_resolve_openai_api_key_reads_fallback_file(
 
 
 def test_ensure_openai_api_key_env_populates_missing_env(
-    monkeypatch,
+    monkeypatch: MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     key_file = tmp_path / "openai_api_key.txt"

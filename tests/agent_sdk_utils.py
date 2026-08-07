@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import Any
 
+from agents import Agent
+from agents.run_config import RunConfig
 from agents.usage import Usage
 
 from app.agent_research.config import AgentRuntimeConfig
@@ -31,20 +34,29 @@ from app.models.comparables import (
 )
 from app.models.extraction import ExtractedField, ExtractionMetadata, PropertyExtractionResult
 from app.models.neighborhood import (
+    AmenityRecord,
+    CommuteTimeRecord,
     CrimeStatistics,
+    DevelopmentRecord,
+    EmployerRecord,
+    EnvironmentalHazardRecord,
     FloodRiskSummary,
     NeighborhoodData,
     PopulationIncomeStats,
     SchoolRecord,
+    ZoningChangeRecord,
 )
 from app.models.property import Address, NormalizedProperty
 from app.models.public_records import (
     BuildingCharacteristics,
     BuildingValidation,
+    DeedRecord,
     FloodZoneInfo,
     OwnershipRecord,
     ParcelInfo,
+    PermitRecord,
     PublicRecordsData,
+    SaleRecord,
     TaxHistoryRecord,
     ValidationComparison,
 )
@@ -141,17 +153,17 @@ class StubAgentRunner:
         self.usage = usage or Usage(
             requests=1, input_tokens=100, output_tokens=50, total_tokens=150
         )
-        self.calls: list[dict[str, object]] = []
+        self.calls: list[dict[str, Any]] = []
 
-    async def run(
+    async def run[TOutput](
         self,
         *,
-        agent: object,
+        agent: Agent[AgentRunContext],
         agent_input: str,
         context: AgentRunContext,
-        run_config: object,
-        output_type: type[object],
-    ) -> object:
+        run_config: RunConfig,
+        output_type: type[TOutput],
+    ) -> TOutput:
         self.calls.append(
             {
                 "agent": agent,
@@ -161,18 +173,20 @@ class StubAgentRunner:
                 "output_type": output_type,
             }
         )
+        if not isinstance(self.output, output_type):
+            raise TypeError("Unexpected output type.")
         return self.output
 
-    async def run_detailed(
+    async def run_detailed[TOutput](
         self,
         *,
-        agent: object,
+        agent: Agent[AgentRunContext],
         agent_input: str,
         context: AgentRunContext,
-        run_config: object,
-        output_type: type[object],
-    ) -> AgentRunArtifacts[object]:
-        await self.run(
+        run_config: RunConfig,
+        output_type: type[TOutput],
+    ) -> AgentRunArtifacts[TOutput]:
+        output = await self.run(
             agent=agent,
             agent_input=agent_input,
             context=context,
@@ -180,7 +194,7 @@ class StubAgentRunner:
             output_type=output_type,
         )
         return AgentRunArtifacts(
-            output=self.output,
+            output=output,
             usage=self.usage,
             response_count=1,
         )
@@ -352,17 +366,17 @@ def make_public_records_result() -> ResearchResult[PublicRecordsData]:
                 confidence=ConfidenceScore(value=Decimal("0.7")),
                 citations=citations,
             ),
-            permits=ResearchField[list](
+            permits=ResearchField[list[PermitRecord]](
                 value=[],
                 confidence=ConfidenceScore(value=Decimal("0.4")),
                 citations=citations,
             ),
-            deeds=ResearchField[list](
+            deeds=ResearchField[list[DeedRecord]](
                 value=[],
                 confidence=ConfidenceScore(value=Decimal("0.4")),
                 citations=citations,
             ),
-            sale_history=ResearchField[list](
+            sale_history=ResearchField[list[SaleRecord]](
                 value=[],
                 confidence=ConfidenceScore(value=Decimal("0.4")),
                 citations=citations,
@@ -507,7 +521,7 @@ def make_neighborhood_result() -> ResearchResult[NeighborhoodData]:
                 confidence=ConfidenceScore(value=Decimal("0.7")),
                 citations=citations,
             ),
-            commute_times=ResearchField[list](
+            commute_times=ResearchField[list[CommuteTimeRecord]](
                 value=[], confidence=ConfidenceScore(value=Decimal("0.4"))
             ),
             walk_score=ResearchField[Decimal | None](
@@ -525,10 +539,10 @@ def make_neighborhood_result() -> ResearchResult[NeighborhoodData]:
                 confidence=ConfidenceScore(value=Decimal("0.6")),
                 citations=citations,
             ),
-            nearby_employers=ResearchField[list](
+            nearby_employers=ResearchField[list[EmployerRecord]](
                 value=[], confidence=ConfidenceScore(value=Decimal("0.4"))
             ),
-            major_employers=ResearchField[list](
+            major_employers=ResearchField[list[EmployerRecord]](
                 value=[], confidence=ConfidenceScore(value=Decimal("0.4"))
             ),
             demographics=ResearchField[PopulationIncomeStats | None](
@@ -548,22 +562,25 @@ def make_neighborhood_result() -> ResearchResult[NeighborhoodData]:
                 confidence=ConfidenceScore(value=Decimal("0.7")),
                 citations=citations,
             ),
-            environmental_hazards=ResearchField[list](
+            environmental_hazards=ResearchField[list[EnvironmentalHazardRecord]](
                 value=[], confidence=ConfidenceScore(value=Decimal("0.4"))
             ),
-            nearby_developments=ResearchField[list](
+            nearby_developments=ResearchField[list[DevelopmentRecord]](
                 value=[], confidence=ConfidenceScore(value=Decimal("0.4"))
             ),
-            zoning_changes=ResearchField[list](
+            zoning_changes=ResearchField[list[ZoningChangeRecord]](
                 value=[], confidence=ConfidenceScore(value=Decimal("0.4"))
             ),
-            shopping=ResearchField[list](
+            shopping=ResearchField[list[AmenityRecord]](
                 value=[], confidence=ConfidenceScore(value=Decimal("0.4"))
             ),
-            hospitals=ResearchField[list](
+            hospitals=ResearchField[list[AmenityRecord]](
                 value=[], confidence=ConfidenceScore(value=Decimal("0.4"))
             ),
-            parks=ResearchField[list](value=[], confidence=ConfidenceScore(value=Decimal("0.4"))),
+            parks=ResearchField[list[AmenityRecord]](
+                value=[],
+                confidence=ConfidenceScore(value=Decimal("0.4")),
+            ),
         ),
     )
 

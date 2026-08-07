@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.investment_committee.config import CommitteeRuntimeConfig
+from app.investment_committee.config import CommitteeRuntimeConfig, CommitteeTracingConfig
 from app.investment_committee.services import InvestmentCommitteeService
 from app.investment_committee.tracing import (
     build_committee_run_config,
@@ -50,7 +50,9 @@ def test_configure_committee_tracing_sets_sdk_toggle(monkeypatch: pytest.MonkeyP
 
     configure_committee_tracing(CommitteeRuntimeConfig())
     configure_committee_tracing(
-        CommitteeRuntimeConfig(tracing={"enabled": False, "workflow_name": "x"})
+        CommitteeRuntimeConfig(
+            tracing=CommitteeTracingConfig(enabled=False, workflow_name="x")
+        )
     )
 
     assert calls == [False, True]

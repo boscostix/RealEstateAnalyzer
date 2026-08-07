@@ -62,6 +62,7 @@ def test_property_verification_marks_confirmed_and_corrected_fields() -> None:
 
     assert response.success is True
     assert response.property is not None
+    assert response.verification_summary is not None
     assert response.property.asking_price.status == VerificationStatus.VERIFIED
     assert response.property.annual_property_tax.status == VerificationStatus.CORRECTED
     assert response.property.annual_property_tax.final_value == Decimal("5000")

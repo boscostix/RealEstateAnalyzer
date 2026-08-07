@@ -23,6 +23,7 @@ from app.models.public_records import (
 from app.models.research import (
     CacheStatus,
     ConfidenceScore,
+    ResearchDomain,
     ResearchField,
     ResearchMetadata,
     ResearchResult,
@@ -68,7 +69,7 @@ def build_result(provider: str) -> ResearchResult[PublicRecordsData]:
         retrieved_at=retrieved_at,
         metadata=ResearchMetadata(
             provider=provider,
-            domain="public_records",
+            domain=ResearchDomain.PUBLIC_RECORDS,
             retrieved_at=retrieved_at,
             provider_latency_ms=5,
             cache_status=CacheStatus.MISS,

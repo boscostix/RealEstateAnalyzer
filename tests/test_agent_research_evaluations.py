@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+from decimal import Decimal
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -16,7 +18,8 @@ from app.agent_research.models import (
     EvidenceSourceType,
     FindingSeverity,
 )
-from app.agent_research.services import ListingAgentService
+from app.agent_research.orchestrator import SpecialistAgentOrchestrator
+from app.agent_research.services import ListingAgentService, PropertyRiskAgentService
 from app.agent_research.synthesis import UnifiedSynthesisService
 from app.agent_research.versioning import AgentName
 from tests.agent_sdk_utils import (
@@ -39,7 +42,7 @@ from tests.test_agent_research_synthesis import (
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "agent_research_evaluation_cases.json"
 
 
-def load_cases() -> dict[str, dict[str, object]]:
+def load_cases() -> dict[str, dict[str, Any]]:
     payload = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
     return {case["case_id"]: case for case in payload["cases"]}
 
@@ -70,8 +73,14 @@ def test_conflict_recall_fixture_detects_expected_year_built_conflict() -> None:
 async def test_missing_data_recall_fixture_surfaces_expected_gap() -> None:
     case = load_cases()["missing_data_roof_age"]
     service = UnifiedSynthesisService(
-        specialist_orchestrator=StubSpecialistOrchestrator(build_workflow_response()),
-        risk_agent_service=StubRiskService(make_property_risk_output()),
+        specialist_orchestrator=cast(
+            SpecialistAgentOrchestrator,
+            StubSpecialistOrchestrator(build_workflow_response()),
+        ),
+        risk_agent_service=cast(
+            PropertyRiskAgentService,
+            StubRiskService(make_property_risk_output()),
+        ),
     )
 
     response = await service.run(request_id="req-123", payload=build_request())
@@ -109,6 +118,7 @@ async def test_evidence_coverage_fixture_preserves_traceable_evidence() -> None:
     case = load_cases()["evidence_coverage_consolidated"]
     workflow_response = build_workflow_response()
     assert workflow_response.result is not None
+    assert workflow_response.result.listing_analysis is not None
     workflow_response.result.listing_analysis.findings = [
         AgentFinding(
             finding_id="finding-1",
@@ -117,7 +127,7 @@ async def test_evidence_coverage_fixture_preserves_traceable_evidence() -> None:
             finding="Listing evidence remains traceable.",
             significance="Used for evidence coverage evaluation.",
             severity=FindingSeverity.LOW,
-            confidence="0.70",
+            confidence=Decimal("0.70"),
             evidence=[
                 EvidenceReference(
                     source_id="property:3f0ddefba267eb73:verified_property",
@@ -130,8 +140,14 @@ async def test_evidence_coverage_fixture_preserves_traceable_evidence() -> None:
         )
     ]
     service = UnifiedSynthesisService(
-        specialist_orchestrator=StubSpecialistOrchestrator(workflow_response),
-        risk_agent_service=StubRiskService(make_property_risk_output()),
+        specialist_orchestrator=cast(
+            SpecialistAgentOrchestrator,
+            StubSpecialistOrchestrator(workflow_response),
+        ),
+        risk_agent_service=cast(
+            PropertyRiskAgentService,
+            StubRiskService(make_property_risk_output()),
+        ),
     )
 
     response = await service.run(request_id="req-123", payload=build_request())

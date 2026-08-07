@@ -22,6 +22,7 @@ from app.models.comparables import (
 from app.models.research import (
     CacheStatus,
     ConfidenceScore,
+    ResearchDomain,
     ResearchMetadata,
     ResearchResult,
 )
@@ -77,7 +78,7 @@ def build_sales_result(provider: str) -> ResearchResult[SalesCompsProviderData]:
         retrieved_at=retrieved_at,
         metadata=ResearchMetadata(
             provider=provider,
-            domain="sales_comps",
+            domain=ResearchDomain.SALES_COMPS,
             retrieved_at=retrieved_at,
             provider_latency_ms=5,
             cache_status=CacheStatus.MISS,
@@ -129,7 +130,7 @@ def build_rental_result(provider: str) -> ResearchResult[RentalCompsProviderData
         retrieved_at=retrieved_at,
         metadata=ResearchMetadata(
             provider=provider,
-            domain="rental_comps",
+            domain=ResearchDomain.RENTAL_COMPS,
             retrieved_at=retrieved_at,
             provider_latency_ms=5,
             cache_status=CacheStatus.MISS,

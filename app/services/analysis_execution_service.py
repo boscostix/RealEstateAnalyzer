@@ -117,6 +117,11 @@ class AnalysisExecutionService:
     ) -> asyncio.Task[None]:
         """Schedule analysis execution in-process and return the created task."""
 
+        logger.info(
+            "analysis_execution_scheduled request_id=%s analysis_id=%s runner=in_process",
+            request_id,
+            analysis_id,
+        )
         return self._task_runner.start(
             analysis_id=analysis_id,
             coroutine=self.run_analysis(analysis_id=analysis_id, request_id=request_id),
@@ -328,6 +333,12 @@ class AnalysisExecutionService:
                 current_stage=stage,
                 execution_metadata=execution_metadata,
             )
+        logger.info(
+            "analysis_stage_transition analysis_id=%s status=%s stage=%s",
+            analysis_id,
+            AnalysisStatus.RUNNING.value if transition_to_running else execution_metadata["status"],
+            stage.value,
+        )
 
     def _persist_partial_results(
         self,
@@ -359,6 +370,12 @@ class AnalysisExecutionService:
                 status=AnalysisStatus.COMPLETED,
                 current_stage=stage,
             )
+        logger.info(
+            "analysis_execution_completed analysis_id=%s stage=%s status=%s",
+            analysis_id,
+            stage.value,
+            AnalysisStatus.COMPLETED.value,
+        )
 
     def _handle_failure(
         self,

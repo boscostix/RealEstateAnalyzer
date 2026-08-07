@@ -7,6 +7,8 @@ from decimal import Decimal
 from typing import Any
 
 import pytest
+from agents import Agent
+from agents.run_config import RunConfig
 from agents.usage import Usage
 
 from app.agent_research.sanitization import UNTRUSTED_TEXT_REPLACEMENT
@@ -66,15 +68,15 @@ class RecordingRunner:
         self.sleep_seconds = sleep_seconds
         self.calls: list[dict[str, Any]] = []
 
-    async def run(
+    async def run[TOutput](
         self,
         *,
-        agent: Any,
+        agent: Agent[Any],
         agent_input: str,
         context: Any,
-        run_config: Any,
-        output_type: type[InvestmentCommitteeOutput],
-    ) -> InvestmentCommitteeOutput:
+        run_config: RunConfig,
+        output_type: type[TOutput],
+    ) -> TOutput:
         self.calls.append(
             {
                 "agent": agent,
@@ -89,10 +91,12 @@ class RecordingRunner:
         if self.fail_times > 0:
             self.fail_times -= 1
             raise RuntimeError("transient failure")
+        if not isinstance(self.output, output_type):
+            raise TypeError("Unexpected output type.")
         return self.output
 
-    async def run_detailed(self, **_: Any) -> Any:
-        output = await self.run(**_)
+    async def run_detailed[TOutput](self, **kwargs: Any) -> CommitteeRunArtifacts[TOutput]:
+        output = await self.run(**kwargs)
         return CommitteeRunArtifacts(
             output=output,
             usage=Usage(requests=1, input_tokens=100, output_tokens=50, total_tokens=150),

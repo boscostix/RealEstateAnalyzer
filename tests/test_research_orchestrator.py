@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from typing import TypeVar, cast
 
 import pytest
 
@@ -33,6 +34,7 @@ from app.models.research import (
     CacheStatus,
     Citation,
     ConfidenceScore,
+    ResearchDomain,
     ResearchField,
     ResearchMetadata,
     ResearchResult,
@@ -41,7 +43,13 @@ from app.models.research import (
 from app.models.research_package import ResearchPackageRequest
 from app.models.verification import VerificationStatus, VerifiedField, VerifiedPropertySnapshot
 from app.research.config import CacheConfig, ProviderExecutionConfig, ResearchConfig
+from app.services.neighborhood_service import NeighborhoodService
+from app.services.public_records_service import PublicRecordsService
+from app.services.rental_comps_service import RentalCompsService
 from app.services.research_orchestrator import ResearchOrchestrator
+from app.services.sales_comps_service import SalesCompsService
+
+T = TypeVar("T")
 
 
 def build_property() -> VerifiedPropertySnapshot:
@@ -79,7 +87,7 @@ def build_public_records_response() -> PublicRecordsResearchResponse:
             retrieved_at=retrieved_at,
             metadata=ResearchMetadata(
                 provider="public_records_provider",
-                domain="public_records",
+                domain=ResearchDomain.PUBLIC_RECORDS,
                 retrieved_at=retrieved_at,
                 provider_latency_ms=5,
                 cache_status=CacheStatus.MISS,
@@ -124,7 +132,7 @@ def build_sales_response() -> SalesCompsResearchResponse:
             retrieved_at=retrieved_at,
             metadata=ResearchMetadata(
                 provider="sales_provider",
-                domain="sales_comps",
+                domain=ResearchDomain.SALES_COMPS,
                 retrieved_at=retrieved_at,
                 provider_latency_ms=5,
                 cache_status=CacheStatus.MISS,
@@ -157,7 +165,7 @@ def build_rental_response() -> RentalCompsResearchResponse:
             retrieved_at=retrieved_at,
             metadata=ResearchMetadata(
                 provider="rental_provider",
-                domain="rental_comps",
+                domain=ResearchDomain.RENTAL_COMPS,
                 retrieved_at=retrieved_at,
                 provider_latency_ms=5,
                 cache_status=CacheStatus.MISS,
@@ -190,7 +198,7 @@ def build_neighborhood_response() -> NeighborhoodResearchResponse:
             retrieved_at=retrieved_at,
             metadata=ResearchMetadata(
                 provider="neighborhood_provider",
-                domain="neighborhood",
+                domain=ResearchDomain.NEIGHBORHOOD,
                 retrieved_at=retrieved_at,
                 provider_latency_ms=5,
                 cache_status=CacheStatus.MISS,
@@ -242,6 +250,7 @@ class StaticService[T]:
         self.response = response
 
     async def research(self, request: object) -> T:
+        del request
         return self.response
 
 
@@ -250,6 +259,7 @@ class RetryService:
         self.calls = 0
 
     async def research(self, request: object) -> SalesCompsResearchResponse:
+        del request
         self.calls += 1
         if self.calls == 1:
             raise ResearchProviderError(message="Transient sales issue.")
@@ -258,17 +268,34 @@ class RetryService:
 
 class TimeoutService:
     async def research(self, request: object) -> NeighborhoodResearchResponse:
+        del request
         await asyncio.sleep(0.05)
         return build_neighborhood_response()
+
+
+def as_public_records_service(response: PublicRecordsResearchResponse) -> PublicRecordsService:
+    return cast(PublicRecordsService, StaticService(response))
+
+
+def as_sales_comps_service(response: SalesCompsResearchResponse) -> SalesCompsService:
+    return cast(SalesCompsService, StaticService(response))
+
+
+def as_rental_comps_service(response: RentalCompsResearchResponse) -> RentalCompsService:
+    return cast(RentalCompsService, StaticService(response))
+
+
+def as_neighborhood_service(response: NeighborhoodResearchResponse) -> NeighborhoodService:
+    return cast(NeighborhoodService, StaticService(response))
 
 
 @pytest.mark.asyncio
 async def test_research_orchestrator_assembles_package_and_dedupes_citations() -> None:
     orchestrator = ResearchOrchestrator(
-        public_records_service=StaticService(build_public_records_response()),
-        sales_comps_service=StaticService(build_sales_response()),
-        rental_comps_service=StaticService(build_rental_response()),
-        neighborhood_service=StaticService(build_neighborhood_response()),
+        public_records_service=as_public_records_service(build_public_records_response()),
+        sales_comps_service=as_sales_comps_service(build_sales_response()),
+        rental_comps_service=as_rental_comps_service(build_rental_response()),
+        neighborhood_service=as_neighborhood_service(build_neighborhood_response()),
     )
 
     response = await orchestrator.research(ResearchPackageRequest(property=build_property()))
@@ -288,10 +315,10 @@ async def test_research_orchestrator_assembles_package_and_dedupes_citations() -
 async def test_research_orchestrator_retries_retryable_errors_and_returns_partials() -> None:
     retry_service = RetryService()
     orchestrator = ResearchOrchestrator(
-        public_records_service=StaticService(build_public_records_response()),
-        sales_comps_service=retry_service,
-        rental_comps_service=StaticService(build_rental_response()),
-        neighborhood_service=StaticService(build_neighborhood_response()),
+        public_records_service=as_public_records_service(build_public_records_response()),
+        sales_comps_service=cast(SalesCompsService, retry_service),
+        rental_comps_service=as_rental_comps_service(build_rental_response()),
+        neighborhood_service=as_neighborhood_service(build_neighborhood_response()),
         config=ResearchConfig(
             cache=CacheConfig(),
             execution=ProviderExecutionConfig(
@@ -313,10 +340,10 @@ async def test_research_orchestrator_retries_retryable_errors_and_returns_partia
 @pytest.mark.asyncio
 async def test_research_orchestrator_records_timeout_as_warning() -> None:
     orchestrator = ResearchOrchestrator(
-        public_records_service=StaticService(build_public_records_response()),
-        sales_comps_service=StaticService(build_sales_response()),
-        rental_comps_service=StaticService(build_rental_response()),
-        neighborhood_service=TimeoutService(),
+        public_records_service=as_public_records_service(build_public_records_response()),
+        sales_comps_service=as_sales_comps_service(build_sales_response()),
+        rental_comps_service=as_rental_comps_service(build_rental_response()),
+        neighborhood_service=cast(NeighborhoodService, TimeoutService()),
         config=ResearchConfig(
             cache=CacheConfig(),
             execution=ProviderExecutionConfig(
