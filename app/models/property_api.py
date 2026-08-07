@@ -17,6 +17,7 @@ class PropertyApiModel(BaseModel):
 
 class AnalysisSummaryResponse(PropertyApiModel):
     id: str
+    property_id: str
     version: int
     status: AnalysisStatus
     current_stage: AnalysisStage | None = None

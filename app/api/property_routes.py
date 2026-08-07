@@ -141,6 +141,7 @@ def _property_summary_response(property_record: PropertyRecord) -> PropertySumma
 def _analysis_summary_response(analysis: AnalysisRecord) -> AnalysisSummaryResponse:
     return AnalysisSummaryResponse(
         id=analysis.id,
+        property_id=analysis.property_id,
         version=analysis.version,
         status=analysis.status,
         current_stage=analysis.current_stage,
