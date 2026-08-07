@@ -209,3 +209,45 @@ class NeighborhoodUnavailableError(AppError):
     message = "No neighborhood providers could complete the request."
     status_code = 502
     retryable = True
+
+
+class PropertyNotFoundError(AppError):
+    code = "property_not_found"
+    message = "The requested property does not exist."
+    status_code = 404
+
+
+class AnalysisNotFoundError(AppError):
+    code = "analysis_not_found"
+    message = "The requested analysis does not exist."
+    status_code = 404
+
+
+class InvalidAnalysisStateError(AppError):
+    code = "invalid_analysis_state"
+    message = "The requested analysis state transition is not allowed."
+    status_code = 409
+
+
+class AnalysisImmutableError(AppError):
+    code = "analysis_immutable"
+    message = "Completed analyses cannot be modified."
+    status_code = 409
+
+
+class AnalysisVersionConflictError(AppError):
+    code = "analysis_version_conflict"
+    message = "The next analysis version could not be reserved."
+    status_code = 409
+
+
+class SnapshotValidationError(AppError):
+    code = "snapshot_validation_error"
+    message = "A persisted snapshot failed validation."
+    status_code = 422
+
+
+class DatabaseOperationError(AppError):
+    code = "database_operation_error"
+    message = "A database operation failed."
+    status_code = 500

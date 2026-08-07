@@ -2,33 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Generator
 from datetime import UTC, datetime
 from decimal import Decimal
-from pathlib import Path
 
 import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.db.base import Base
 from app.db.models import AnalysisRecord, AnalysisStage, AnalysisStatus, PropertyRecord
-from app.db.session import create_engine_from_url, create_session_factory
-
-
-@pytest.fixture
-def db_session(tmp_path: Path) -> Generator[Session, None, None]:
-    database_path = tmp_path / "phase1_models.db"
-    engine = create_engine_from_url(f"sqlite+pysqlite:///{database_path}")
-    Base.metadata.create_all(engine)
-    session_factory = create_session_factory(engine)
-    session = session_factory()
-    try:
-        yield session
-    finally:
-        session.close()
-        Base.metadata.drop_all(engine)
-        engine.dispose()
 
 
 def test_create_property_and_analysis_relationship(db_session: Session) -> None:
