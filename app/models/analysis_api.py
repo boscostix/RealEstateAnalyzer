@@ -20,6 +20,10 @@ class AnalysisCreateRequest(PropertyApiModel):
     decision_context: DecisionContext | None = None
 
 
+class AnalysisRerunRequest(PropertyApiModel):
+    assumption_overrides: dict[str, Any] = Field(default_factory=dict)
+
+
 class AnalysisDetail(PropertyApiModel):
     id: str
     property_id: str

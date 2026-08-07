@@ -251,3 +251,15 @@ class DatabaseOperationError(AppError):
     code = "database_operation_error"
     message = "A database operation failed."
     status_code = 500
+
+
+class InvalidAnalysisRerunRequestError(AppError):
+    code = "invalid_analysis_rerun_request"
+    message = "The analysis rerun request is invalid."
+    status_code = 422
+
+
+class InvalidAssumptionsOverrideError(AppError):
+    code = "invalid_assumptions_override"
+    message = "The supplied assumptions override is invalid."
+    status_code = 422

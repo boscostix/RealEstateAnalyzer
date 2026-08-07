@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from typing import Any
 
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.orm import Session
@@ -11,6 +12,7 @@ from app.db.analysis_persistence import deserialize_analysis_record
 from app.db.models import AnalysisRecord
 from app.db.repositories import AnalysisRepository, PropertyRepository
 from app.db.session import get_db_session
+from app.exceptions import InvalidAnalysisRerunRequestError, InvalidAssumptionsOverrideError
 from app.logging import logger
 from app.models.analysis_api import (
     AnalysisCreateRequest,
@@ -18,7 +20,9 @@ from app.models.analysis_api import (
     AnalysisDetail,
     AnalysisDetailResponse,
     AnalysisListResponse,
+    AnalysisRerunRequest,
 )
+from app.models.assumptions import AnalysisAssumptions
 from app.models.property_api import AnalysisSummaryResponse
 from app.services.analysis_execution_service import (
     AnalysisExecutionService,
@@ -156,6 +160,77 @@ async def list_property_analyses(
     return response
 
 
+@router.post(
+    "/api/v1/analyses/{analysis_id}/rerun",
+    response_model=AnalysisCreateResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def rerun_analysis(
+    request: Request,
+    analysis_id: str,
+    payload: AnalysisRerunRequest,
+    property_service: PropertyService = property_service_dependency,
+    analysis_repository: AnalysisRepository = analysis_repository_dependency,
+    execution_service: AnalysisExecutionService = analysis_execution_service_dependency,
+) -> AnalysisCreateResponse:
+    started_at = time.perf_counter()
+    source_analysis = analysis_repository.get_required_by_id(analysis_id)
+    persisted = deserialize_analysis_record(source_analysis)
+    if persisted.assumptions_snapshot is None:
+        raise InvalidAnalysisRerunRequestError(
+            message="The source analysis does not contain an assumptions snapshot."
+        )
+
+    _, current_verified_property = property_service.get_property_snapshots(
+        source_analysis.property_id
+    )
+    if current_verified_property is None:
+        raise InvalidAnalysisRerunRequestError(
+            message="The property does not have a current verified snapshot."
+        )
+
+    assumptions = _apply_assumption_overrides(
+        base_assumptions=persisted.assumptions_snapshot,
+        overrides=payload.assumption_overrides,
+    )
+    decision_context = _decision_context_from_execution_metadata(persisted.execution_metadata)
+
+    analysis = analysis_repository.create(
+        property_id=source_analysis.property_id,
+        property_snapshot=current_verified_property,
+        assumptions_snapshot=assumptions,
+        parent_analysis_id=source_analysis.id,
+    )
+    execution_metadata = {
+        "inputs": {
+            "decision_context": (
+                None if decision_context is None else decision_context.model_dump(mode="json")
+            )
+        }
+    }
+    analysis_repository.update_results(
+        analysis.id,
+        execution_metadata=execution_metadata,
+        current_stage=analysis.current_stage,
+    )
+
+    response = AnalysisCreateResponse(success=True, analysis=_analysis_summary_response(analysis))
+    execution_service.start_background_analysis(
+        analysis_id=analysis.id,
+        request_id=getattr(request.state, "request_id", "unknown"),
+    )
+    logger.info(
+        "analysis_rerun_started request_id=%s source_analysis_id=%s "
+        "analysis_id=%s version=%s duration_ms=%s",
+        getattr(request.state, "request_id", "unknown"),
+        analysis_id,
+        analysis.id,
+        analysis.version,
+        int((time.perf_counter() - started_at) * 1000),
+    )
+    return response
+
+
 def _analysis_summary_response(analysis: AnalysisRecord) -> AnalysisSummaryResponse:
     return AnalysisSummaryResponse(
         id=analysis.id,
@@ -204,3 +279,48 @@ def _analysis_detail_response(analysis: AnalysisRecord) -> AnalysisDetail:
         ),
         execution=persisted.execution_metadata,
     )
+
+
+def _decision_context_from_execution_metadata(execution_metadata: dict[str, Any] | None) -> Any:
+    if execution_metadata is None:
+        return None
+    payload = execution_metadata.get("inputs", {}).get("decision_context")
+    if payload is None:
+        return None
+    from app.investment_committee.models import DecisionContext
+
+    return DecisionContext.model_validate(payload)
+
+
+def _apply_assumption_overrides(
+    *,
+    base_assumptions: AnalysisAssumptions,
+    overrides: dict[str, Any],
+) -> AnalysisAssumptions:
+    if not overrides:
+        return base_assumptions.model_copy(deep=True)
+
+    merged = _deep_merge(
+        base_assumptions.model_dump(mode="python"),
+        overrides,
+    )
+    try:
+        return AnalysisAssumptions.model_validate(merged)
+    except Exception as exc:
+        raise InvalidAssumptionsOverrideError(
+            message="The supplied assumptions override could not be validated."
+        ) from exc
+
+
+def _deep_merge(base: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(base)
+    for key, value in overrides.items():
+        if key not in merged:
+            raise InvalidAssumptionsOverrideError(
+                message=f"The supplied assumptions override field '{key}' is not supported."
+            )
+        if isinstance(merged[key], dict) and isinstance(value, dict):
+            merged[key] = _deep_merge(merged[key], value)
+        else:
+            merged[key] = value
+    return merged

@@ -11,6 +11,7 @@ from app.api.persisted_analysis_routes import (
     get_analysis_repository,
     get_property_service,
 )
+from app.db.analysis_persistence import deserialize_analysis_record
 from app.db.base import Base
 from app.db.models import AnalysisStage, AnalysisStatus
 from app.db.repositories import AnalysisRepository, PropertyRepository
@@ -242,3 +243,168 @@ def test_list_property_analyses_returns_lightweight_history() -> None:
     assert [analysis["version"] for analysis in body["analyses"]] == [2, 1]
     assert body["analyses"][0]["id"] == second.id
     assert body["analyses"][1]["id"] == first.id
+
+
+def test_rerun_analysis_reuses_previous_assumptions_and_records_parent() -> None:
+    _reset_db()
+    session = SESSION_FACTORY()
+    property_record = PropertyRepository(session).create(
+        normalized_property=build_normalized_property(),
+        verified_property=build_verified_property(),
+    )
+    analysis_repository = AnalysisRepository(session)
+    original = analysis_repository.create(
+        property_id=property_record.id,
+        property_snapshot=build_verified_property("445000"),
+        assumptions_snapshot=build_assumptions(),
+    )
+    session.close()
+
+    response = client.post(f"/api/v1/analyses/{original.id}/rerun", json={})
+
+    assert response.status_code == 202
+    body = response.json()
+    assert body["analysis"]["version"] == 2
+    assert body["analysis"]["parent_analysis_id"] == original.id
+
+    verify_session = SESSION_FACTORY()
+    original_loaded = AnalysisRepository(verify_session).get_required_by_id(original.id)
+    rerun_loaded = AnalysisRepository(verify_session).get_latest_for_property(property_record.id)
+    assert rerun_loaded is not None
+    assert rerun_loaded.parent_analysis_id == original.id
+    original_assumptions = deserialize_analysis_record(original_loaded).assumptions_snapshot
+    rerun_assumptions = deserialize_analysis_record(rerun_loaded).assumptions_snapshot
+    assert original_assumptions is not None
+    assert rerun_assumptions is not None
+    assert original_assumptions.model_dump(mode="json") == rerun_assumptions.model_dump(mode="json")
+    verify_session.close()
+
+
+def test_rerun_analysis_applies_interest_rate_override() -> None:
+    _reset_db()
+    session = SESSION_FACTORY()
+    property_record = PropertyRepository(session).create(
+        verified_property=build_verified_property()
+    )
+    analysis_repository = AnalysisRepository(session)
+    original = analysis_repository.create(
+        property_id=property_record.id,
+        property_snapshot=build_verified_property(),
+        assumptions_snapshot=build_assumptions(),
+    )
+    session.close()
+
+    response = client.post(
+        f"/api/v1/analyses/{original.id}/rerun",
+        json={"assumption_overrides": {"financing": {"interest_rate_percent": "7.10"}}},
+    )
+
+    assert response.status_code == 202
+    verify_session = SESSION_FACTORY()
+    rerun_loaded = AnalysisRepository(verify_session).get_latest_for_property(property_record.id)
+    assert rerun_loaded is not None
+    rerun_assumptions = deserialize_analysis_record(rerun_loaded).assumptions_snapshot
+    verify_session.close()
+
+    assert rerun_assumptions is not None
+    assert str(rerun_assumptions.financing.interest_rate_percent) == "7.10"
+
+
+def test_rerun_analysis_applies_rent_override() -> None:
+    _reset_db()
+    session = SESSION_FACTORY()
+    property_record = PropertyRepository(session).create(
+        verified_property=build_verified_property()
+    )
+    analysis_repository = AnalysisRepository(session)
+    original = analysis_repository.create(
+        property_id=property_record.id,
+        property_snapshot=build_verified_property(),
+        assumptions_snapshot=build_assumptions(),
+    )
+    session.close()
+
+    response = client.post(
+        f"/api/v1/analyses/{original.id}/rerun",
+        json={"assumption_overrides": {"income": {"monthly_rent": "3500"}}},
+    )
+
+    assert response.status_code == 202
+    verify_session = SESSION_FACTORY()
+    rerun_loaded = AnalysisRepository(verify_session).get_latest_for_property(property_record.id)
+    assert rerun_loaded is not None
+    rerun_assumptions = deserialize_analysis_record(rerun_loaded).assumptions_snapshot
+    verify_session.close()
+
+    assert rerun_assumptions is not None
+    assert str(rerun_assumptions.income.monthly_rent) == "3500"
+
+
+def test_rerun_analysis_uses_current_property_snapshot_after_property_update() -> None:
+    _reset_db()
+    session = SESSION_FACTORY()
+    property_record = PropertyRepository(session).create(
+        normalized_property=build_normalized_property("445000"),
+        verified_property=build_verified_property("445000"),
+    )
+    analysis_repository = AnalysisRepository(session)
+    original = analysis_repository.create(
+        property_id=property_record.id,
+        property_snapshot=build_verified_property("445000"),
+        assumptions_snapshot=build_assumptions(),
+    )
+    PropertyRepository(session).update(
+        property_record.id,
+        normalized_property=build_normalized_property("430000"),
+        verified_property=build_verified_property("430000"),
+        current_version=2,
+    )
+    session.close()
+
+    response = client.post(f"/api/v1/analyses/{original.id}/rerun", json={})
+
+    assert response.status_code == 202
+    verify_session = SESSION_FACTORY()
+    original_loaded = AnalysisRepository(verify_session).get_required_by_id(original.id)
+    rerun_loaded = AnalysisRepository(verify_session).get_latest_for_property(property_record.id)
+    assert rerun_loaded is not None
+    original_snapshot = deserialize_analysis_record(original_loaded).property_snapshot
+    rerun_snapshot = deserialize_analysis_record(rerun_loaded).property_snapshot
+    verify_session.close()
+
+    assert original_snapshot is not None
+    assert rerun_snapshot is not None
+    assert str(original_snapshot.asking_price.final_value) == "445000"
+    assert str(rerun_snapshot.asking_price.final_value) == "430000"
+
+
+def test_rerun_analysis_returns_structured_error_for_invalid_override() -> None:
+    _reset_db()
+    session = SESSION_FACTORY()
+    property_record = PropertyRepository(session).create(
+        verified_property=build_verified_property()
+    )
+    analysis_repository = AnalysisRepository(session)
+    original = analysis_repository.create(
+        property_id=property_record.id,
+        property_snapshot=build_verified_property(),
+        assumptions_snapshot=build_assumptions(),
+    )
+    session.close()
+
+    response = client.post(
+        f"/api/v1/analyses/{original.id}/rerun",
+        json={"assumption_overrides": {"not_a_real_section": {"value": "1"}}},
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "success": False,
+        "error": {
+            "code": "invalid_assumptions_override",
+            "message": (
+                "The supplied assumptions override field 'not_a_real_section' is not supported."
+            ),
+            "retryable": False,
+        },
+    }
