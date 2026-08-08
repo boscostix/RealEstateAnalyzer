@@ -269,6 +269,52 @@ export type OfferRangeBasis = {
   description: string;
 };
 
+export type CommitteeRisk = {
+  category: string;
+  title: string;
+  explanation: string;
+  severity: string;
+  probability?: string | null;
+  financial_impact?: string | null;
+  mitigation?: string | null;
+  blocks_investment: boolean;
+};
+
+export type RequiredCondition = {
+  condition: string;
+  current_status: string;
+  threshold_or_requirement: string;
+  consequence_if_false: string;
+};
+
+export type DueDiligenceItem = {
+  category: string;
+  action: string;
+  reason: string;
+  priority: string;
+  timing: string;
+  responsible_party?: string | null;
+};
+
+export type EvidenceReference = {
+  source_id: string;
+  source_type: string;
+  citation_id?: string | null;
+  field_path?: string | null;
+  supporting_excerpt?: string | null;
+  retrieved_at?: string | null;
+};
+
+export type CommitteeMissingItem = {
+  item: string;
+  materiality: string;
+  importance: string;
+  reason_needed: string;
+  decision_impact: string;
+  recommended_source?: string | null;
+  blocks_recommendation: boolean;
+};
+
 export type InvestmentCommitteeOutput = {
   recommendation: string;
   recommendation_summary: string;
@@ -283,6 +329,216 @@ export type InvestmentCommitteeOutput = {
   strongest_downside: string;
   reasons_to_proceed?: CommitteeReason[];
   reasons_not_to_proceed?: CommitteeReason[];
+  material_risks?: CommitteeRisk[];
+  missing_information?: CommitteeMissingItem[];
+  what_must_be_true?: RequiredCondition[];
+  due_diligence_checklist?: DueDiligenceItem[];
+  evidence_references?: EvidenceReference[];
+  warnings?: string[];
+};
+
+export type ValueRange = {
+  low?: NumericLike | null;
+  high?: NumericLike | null;
+};
+
+export type SalesComparableRecord = {
+  address: string;
+  source_url?: string | null;
+  sold_date?: string | null;
+  sold_price?: NumericLike | null;
+  list_price?: NumericLike | null;
+  square_feet?: number | null;
+  bedrooms?: NumericLike | null;
+  bathrooms?: NumericLike | null;
+  year_built?: number | null;
+  distance_miles?: NumericLike | null;
+  price_per_square_foot?: NumericLike | null;
+  adjusted_price_per_square_foot?: NumericLike | null;
+  similarity_score?: NumericLike | null;
+};
+
+export type RentalComparableRecord = {
+  address: string;
+  source_url?: string | null;
+  rental_status: string;
+  listed_date?: string | null;
+  leased_date?: string | null;
+  monthly_rent?: NumericLike | null;
+  square_feet?: number | null;
+  bedrooms?: NumericLike | null;
+  bathrooms?: NumericLike | null;
+  year_built?: number | null;
+  distance_miles?: NumericLike | null;
+  rent_per_square_foot?: NumericLike | null;
+  occupancy_indicator?: NumericLike | null;
+  similarity_score?: NumericLike | null;
+};
+
+export type SalesCompsSummary = {
+  comparable_count: number;
+  average_sold_price?: NumericLike | null;
+  median_sold_price?: NumericLike | null;
+  average_price_per_square_foot?: NumericLike | null;
+  median_adjusted_price_per_square_foot?: NumericLike | null;
+  sold_price_range?: ValueRange;
+};
+
+export type RentalCompsSummary = {
+  comparable_count: number;
+  average_monthly_rent?: NumericLike | null;
+  median_monthly_rent?: NumericLike | null;
+  average_rent_per_square_foot?: NumericLike | null;
+  estimated_rent_range?: ValueRange;
+  active_count?: number;
+  leased_count?: number;
+  average_occupancy_indicator?: NumericLike | null;
+};
+
+export type SalesCompsData = {
+  top_comparables?: SalesComparableRecord[];
+  summary: SalesCompsSummary;
+};
+
+export type RentalCompsData = {
+  best_comparables?: RentalComparableRecord[];
+  summary: RentalCompsSummary;
+};
+
+export type ResearchCitation = {
+  source_name: string;
+  source_url: string;
+  source_type: string;
+  retrieved_at?: string | null;
+  note?: string | null;
+};
+
+export type ResearchSource = {
+  name: string;
+  type: string;
+  url: string;
+  retrieved_at?: string | null;
+};
+
+export type ResearchConfidence = {
+  value: NumericLike;
+  reason?: string | null;
+};
+
+export type ResearchMetadata = {
+  provider: string;
+  domain: string;
+  retrieved_at?: string;
+  provider_latency_ms: number;
+  cache_status: string;
+  source_url?: string | null;
+  source_name?: string | null;
+  warnings?: string[];
+};
+
+export type ResearchResult<T> = {
+  provider: string;
+  retrieved_at: string;
+  metadata: ResearchMetadata;
+  confidence: ResearchConfidence;
+  citations?: ResearchCitation[];
+  sources?: ResearchSource[];
+  data: T;
+};
+
+export type ResearchPackageMetadata = {
+  retrieved_at?: string;
+  total_duration_ms: number;
+  completed_domains?: string[];
+  failed_domains?: string[];
+  citations?: ResearchCitation[];
+};
+
+export type ResearchPackage = {
+  public_records?: ResearchResult<Record<string, unknown>> | null;
+  sales_comps?: ResearchResult<SalesCompsData> | null;
+  rental_comps?: ResearchResult<RentalCompsData> | null;
+  neighborhood?: ResearchResult<Record<string, unknown>> | null;
+  metadata: ResearchPackageMetadata;
+  warnings?: Array<{
+    code: string;
+    domain: string;
+    message: string;
+    retryable?: boolean;
+  }>;
+};
+
+export type AgentFinding = {
+  finding_id: string;
+  category: string;
+  title: string;
+  finding: string;
+  significance: string;
+  severity: string;
+  confidence: NumericLike;
+  evidence?: EvidenceReference[];
+  affected_fields?: string[];
+  missing_information?: string[];
+  recommended_next_actions?: string[];
+  is_inference: boolean;
+};
+
+export type ResearchConflict = {
+  conflict_id: string;
+  field_or_topic: string;
+  materiality: string;
+  resolution_status: string;
+  resolution_reason?: string | null;
+  requires_user_review: boolean;
+};
+
+export type UnifiedAgentResearchPackage = {
+  consolidated_findings?: AgentFinding[];
+  conflicts?: ResearchConflict[];
+  missing_information?: string[];
+  due_diligence_questions?: string[];
+  evidence_index?: EvidenceReference[];
+  overall_data_confidence: NumericLike;
+  warnings?: string[];
+  execution_metadata?: Record<string, unknown>;
+};
+
+export type StressTestResult = {
+  identifier: string;
+  description: string;
+  changed_assumptions: Record<string, NumericLike | string>;
+  change_in_monthly_cash_flow: NumericLike;
+  change_in_annual_cash_flow: NumericLike;
+  change_in_cash_on_cash_return?: NumericLike | null;
+  cash_flow_remains_positive: boolean;
+  additional_cash_required: NumericLike;
+  warnings?: string[];
+};
+
+export type ScenarioResult = {
+  name: string;
+  adjustments?: Record<string, NumericLike>;
+  warnings?: string[];
+  metrics?: Record<string, NumericLike | null>;
+};
+
+export type MaximumOfferResult = {
+  break_even_cash_flow_price?: NumericLike | null;
+  target_monthly_cash_flow_price?: NumericLike | null;
+  target_cap_rate_price?: NumericLike | null;
+  target_cash_on_cash_price?: NumericLike | null;
+  target_dscr_price?: NumericLike | null;
+  binding_maximum_price?: NumericLike | null;
+  asking_price_gap?: NumericLike | null;
+  warnings?: string[];
+};
+
+export type UnderwritingAnalysis = {
+  acquisition?: Record<string, unknown>;
+  metrics?: Record<string, NumericLike | null>;
+  maximum_offer?: MaximumOfferResult | null;
+  scenarios?: ScenarioResult[];
+  stress_tests?: StressTestResult[];
   warnings?: string[];
 };
 
@@ -302,9 +558,9 @@ export type AnalysisDetail = {
   error_message?: string | null;
   property_snapshot?: VerifiedPropertySnapshot | null;
   assumptions?: AnalysisAssumptions | null;
-  underwriting?: Record<string, unknown> | null;
-  research?: Record<string, unknown> | null;
-  agent_research?: Record<string, unknown> | null;
+  underwriting?: UnderwritingAnalysis | null;
+  research?: ResearchPackage | null;
+  agent_research?: UnifiedAgentResearchPackage | null;
   investment_committee?: InvestmentCommitteeOutput | null;
   execution?: Record<string, unknown> | null;
 };

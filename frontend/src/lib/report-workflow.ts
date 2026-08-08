@@ -1,4 +1,8 @@
-import type { AnalysisDetail, InvestmentCommitteeOutput } from "@/lib/api/types";
+import type {
+  AnalysisDetail,
+  CommitteeReason,
+  InvestmentCommitteeOutput,
+} from "@/lib/api/types";
 
 export type RecommendationTone = "success" | "warning" | "danger" | "neutral";
 
@@ -14,6 +18,28 @@ export type OfferSectionData = {
     description: string;
   }>;
   hasMeaningfulData: boolean;
+};
+
+export type ComparableTableRow = {
+  address: string;
+  primary: string;
+  secondary: string;
+  tertiary: string;
+  link?: string | null;
+};
+
+export type EvidencePanelData = {
+  researchCitations: Array<{
+    label: string;
+    url: string;
+    note: string;
+  }>;
+  evidenceReferences: Array<{
+    sourceId: string;
+    sourceType: string;
+    locator: string;
+    excerpt: string;
+  }>;
 };
 
 const RECOMMENDATION_LABELS: Record<string, string> = {
@@ -101,6 +127,128 @@ export function executiveSummaryLines(
     committee.strongest_upside,
     committee.strongest_downside,
   ].filter((line): line is string => Boolean(line && line.trim()));
+}
+
+export function scenarioCards(analysis: AnalysisDetail) {
+  const scenarios = analysis.underwriting?.scenarios ?? [];
+  return scenarios.map((scenario) => ({
+    name: scenario.name,
+    monthlyCashFlow: scenario.metrics?.monthly_pre_tax_cash_flow ?? null,
+    capRate: scenario.metrics?.cap_rate ?? null,
+    cashOnCash: scenario.metrics?.cash_on_cash_return ?? null,
+    warnings: scenario.warnings ?? [],
+    adjustments: Object.entries(scenario.adjustments ?? {}),
+  }));
+}
+
+export function stressTestCards(analysis: AnalysisDetail) {
+  const stressTests = analysis.underwriting?.stress_tests ?? [];
+  return stressTests.map((stressTest) => ({
+    identifier: stressTest.identifier,
+    description: stressTest.description,
+    monthlyCashFlowDelta: stressTest.change_in_monthly_cash_flow,
+    annualCashFlowDelta: stressTest.change_in_annual_cash_flow,
+    remainsPositive: stressTest.cash_flow_remains_positive,
+    additionalCashRequired: stressTest.additional_cash_required,
+    changedAssumptions: Object.entries(stressTest.changed_assumptions ?? {}),
+    warnings: stressTest.warnings ?? [],
+  }));
+}
+
+export function salesComparableRows(analysis: AnalysisDetail): ComparableTableRow[] {
+  const sales = analysis.research?.sales_comps?.data.top_comparables ?? [];
+  return sales.map((item) => ({
+    address: item.address,
+    primary: item.sold_price == null ? "Price N/A" : `Sold ${item.sold_price}`,
+    secondary:
+      item.sold_date == null
+        ? "Date N/A"
+        : `Sold ${item.sold_date}`,
+    tertiary:
+      item.distance_miles == null
+        ? "Distance N/A"
+        : `${item.distance_miles} mi away`,
+    link: item.source_url,
+  }));
+}
+
+export function rentalComparableRows(analysis: AnalysisDetail): ComparableTableRow[] {
+  const rentals = analysis.research?.rental_comps?.data.best_comparables ?? [];
+  return rentals.map((item) => ({
+    address: item.address,
+    primary: item.monthly_rent == null ? "Rent N/A" : `Rent ${item.monthly_rent}/mo`,
+    secondary: item.rental_status.replaceAll("_", " "),
+    tertiary:
+      item.distance_miles == null
+        ? "Distance N/A"
+        : `${item.distance_miles} mi away`,
+    link: item.source_url,
+  }));
+}
+
+export function reasonsOrEmpty(reasons: CommitteeReason[] | undefined): CommitteeReason[] {
+  return reasons ?? [];
+}
+
+export function riskTone(severity: string): RecommendationTone {
+  switch (severity) {
+    case "critical":
+    case "high":
+      return "danger";
+    case "medium":
+      return "warning";
+    case "low":
+      return "neutral";
+    default:
+      return "neutral";
+  }
+}
+
+export function evidencePanelData(analysis: AnalysisDetail): EvidencePanelData {
+  const citations = [
+    ...(analysis.research?.metadata.citations ?? []),
+    ...(analysis.research?.sales_comps?.citations ?? []),
+    ...(analysis.research?.rental_comps?.citations ?? []),
+    ...(analysis.research?.neighborhood?.citations ?? []),
+    ...(analysis.research?.public_records?.citations ?? []),
+  ];
+  const uniqueCitations = new Map<string, { label: string; url: string; note: string }>();
+  for (const citation of citations) {
+    const key = `${citation.source_name}-${citation.source_url}-${citation.note ?? ""}`;
+    if (!uniqueCitations.has(key)) {
+      uniqueCitations.set(key, {
+        label: citation.source_name,
+        url: citation.source_url,
+        note: citation.note ?? citation.source_type,
+      });
+    }
+  }
+
+  const references = [
+    ...(analysis.agent_research?.evidence_index ?? []),
+    ...(analysis.investment_committee?.evidence_references ?? []),
+  ];
+  const uniqueReferences = new Map<
+    string,
+    { sourceId: string; sourceType: string; locator: string; excerpt: string }
+  >();
+  for (const reference of references) {
+    const locator = reference.citation_id ?? reference.field_path ?? "unspecified locator";
+    const key = `${reference.source_id}-${locator}`;
+    if (!uniqueReferences.has(key)) {
+      uniqueReferences.set(key, {
+        sourceId: reference.source_id,
+        sourceType: reference.source_type,
+        locator,
+        excerpt: reference.supporting_excerpt ?? "No excerpt provided.",
+      });
+    }
+  }
+
+  return {
+    researchCitations: [...uniqueCitations.values()],
+    evidenceReferences: [...uniqueReferences.values()],
+  };
 }
 
 function defaultOfferBasis(

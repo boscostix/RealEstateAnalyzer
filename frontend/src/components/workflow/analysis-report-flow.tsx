@@ -23,6 +23,12 @@ import {
   executiveSummaryLines,
   recommendationLabel,
   recommendationTone,
+  riskTone,
+  salesComparableRows,
+  rentalComparableRows,
+  scenarioCards,
+  stressTestCards,
+  evidencePanelData,
 } from "@/lib/report-workflow";
 import { formatCurrency, formatPercent, formatShortDate } from "@/lib/formatters";
 
@@ -89,6 +95,40 @@ export function AnalysisReportFlow(): React.JSX.Element {
   const maximumOffer = recordValue(analysis.underwriting, "maximum_offer");
   const offerSection = deriveOfferSection(analysis);
   const summaryLines = executiveSummaryLines(committee);
+  const scenarioItems = scenarioCards(analysis);
+  const stressItems = stressTestCards(analysis);
+  const salesRows = salesComparableRows(analysis);
+  const rentalRows = rentalComparableRows(analysis);
+  const evidence = evidencePanelData(analysis);
+  const materialRisks = committee?.material_risks ?? [];
+  const missingInformation = [
+    ...(committee?.missing_information ?? []).map((item) => ({
+      title: item.item,
+      detail: item.decision_impact,
+      meta: `${item.materiality} materiality`,
+    })),
+    ...(analysis.agent_research?.missing_information ?? []).map((item) => ({
+      title: item,
+      detail: "Identified by the agent research synthesis as still missing.",
+      meta: "agent research",
+    })),
+  ];
+  const whatMustBeTrue = committee?.what_must_be_true ?? [];
+  const diligenceItems = [
+    ...(committee?.due_diligence_checklist ?? []).map((item) => ({
+      title: item.action,
+      detail: item.reason,
+      meta: `${item.priority} priority · ${item.timing.replaceAll("_", " ")}`,
+    })),
+    ...(analysis.agent_research?.due_diligence_questions ?? []).map((item) => ({
+      title: item,
+      detail: "Agent research follow-up question.",
+      meta: "agent research",
+    })),
+  ];
+  const riskFindings = (analysis.agent_research?.consolidated_findings ?? []).filter((finding) =>
+    finding.category.toLowerCase().includes("risk"),
+  );
 
   return (
     <div className="grid gap-8">
@@ -304,6 +344,336 @@ export function AnalysisReportFlow(): React.JSX.Element {
 
         <Card className="lg:col-span-2">
           <CardHeader>
+            <CardTitle>Deep Analysis</CardTitle>
+            <CardDescription>
+              Expand the sections below to inspect comparables, scenarios, stress tests, risks, missing information, diligence, and evidence.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <ExpandableSection
+              defaultOpen
+              description="Persisted rental comparable results and summary statistics from the research package."
+              title="Rental Comparables"
+            >
+              {analysis.research?.rental_comps ? (
+                <div className="grid gap-4">
+                  <ComparableSummaryGrid
+                    items={[
+                      {
+                        label: "Comparables",
+                        value: stringValue(
+                          analysis.research.rental_comps.data.summary.comparable_count,
+                        ),
+                      },
+                      {
+                        label: "Median rent",
+                        value: formatCurrency(
+                          analysis.research.rental_comps.data.summary.median_monthly_rent ?? null,
+                        ),
+                      },
+                      {
+                        label: "Estimated rent range",
+                        value: formatRange(
+                          analysis.research.rental_comps.data.summary.estimated_rent_range?.low,
+                          analysis.research.rental_comps.data.summary.estimated_rent_range?.high,
+                        ),
+                      },
+                    ]}
+                  />
+                  <ComparableTable rows={rentalRows} />
+                </div>
+              ) : (
+                <InlineEmpty message="No rental comparables were persisted on this completed analysis." />
+              )}
+            </ExpandableSection>
+
+            <ExpandableSection
+              description="Persisted sales comparable results and summary statistics from the research package."
+              title="Sales Comparables"
+            >
+              {analysis.research?.sales_comps ? (
+                <div className="grid gap-4">
+                  <ComparableSummaryGrid
+                    items={[
+                      {
+                        label: "Comparables",
+                        value: stringValue(
+                          analysis.research.sales_comps.data.summary.comparable_count,
+                        ),
+                      },
+                      {
+                        label: "Median sold price",
+                        value: formatCurrency(
+                          analysis.research.sales_comps.data.summary.median_sold_price ?? null,
+                        ),
+                      },
+                      {
+                        label: "Sold price range",
+                        value: formatRange(
+                          analysis.research.sales_comps.data.summary.sold_price_range?.low,
+                          analysis.research.sales_comps.data.summary.sold_price_range?.high,
+                        ),
+                      },
+                    ]}
+                  />
+                  <ComparableTable rows={salesRows} />
+                </div>
+              ) : (
+                <InlineEmpty message="No sales comparables were persisted on this completed analysis." />
+              )}
+            </ExpandableSection>
+
+            <ExpandableSection
+              description="Scenario outputs from the persisted underwriting analysis."
+              title="Scenario Analysis"
+            >
+              {scenarioItems.length > 0 ? (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {scenarioItems.map((scenario) => (
+                    <div
+                      className="rounded-2xl border border-border/70 bg-background/80 p-4"
+                      key={scenario.name}
+                    >
+                      <div className="text-sm font-semibold text-foreground">{scenario.name}</div>
+                      <div className="mt-3 grid gap-2 text-sm">
+                        <ScenarioMetric
+                          label="Monthly cash flow"
+                          value={formatCurrency(scenario.monthlyCashFlow)}
+                        />
+                        <ScenarioMetric
+                          label="Cap rate"
+                          value={formatPercent(percentFromDecimal(scenario.capRate))}
+                        />
+                        <ScenarioMetric
+                          label="Cash-on-cash"
+                          value={formatPercent(percentFromDecimal(scenario.cashOnCash))}
+                        />
+                      </div>
+                      {scenario.adjustments.length > 0 ? (
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {scenario.adjustments.map(([key, value]) => (
+                            <StatusBadge key={`${scenario.name}-${key}`} tone="neutral">
+                              {`${key}: ${value}`}
+                            </StatusBadge>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <InlineEmpty message="No scenario outputs were persisted on this completed analysis." />
+              )}
+            </ExpandableSection>
+
+            <ExpandableSection
+              description="Stress-test results from the persisted underwriting analysis."
+              title="Stress Tests"
+            >
+              {stressItems.length > 0 ? (
+                <div className="grid gap-3">
+                  {stressItems.map((stress) => (
+                    <div
+                      className="rounded-2xl border border-border/70 bg-background/80 p-4"
+                      key={stress.identifier}
+                    >
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="text-sm font-semibold text-foreground">
+                          {stress.identifier}
+                        </div>
+                        <StatusBadge tone={stress.remainsPositive ? "success" : "danger"}>
+                          {stress.remainsPositive ? "cash flow remains positive" : "cash flow pressured"}
+                        </StatusBadge>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        {stress.description}
+                      </p>
+                      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                        <ScenarioMetric
+                          label="Monthly cash flow delta"
+                          value={formatCurrency(stress.monthlyCashFlowDelta)}
+                        />
+                        <ScenarioMetric
+                          label="Annual cash flow delta"
+                          value={formatCurrency(stress.annualCashFlowDelta)}
+                        />
+                        <ScenarioMetric
+                          label="Additional cash required"
+                          value={formatCurrency(stress.additionalCashRequired)}
+                        />
+                      </div>
+                      {stress.changedAssumptions.length > 0 ? (
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {stress.changedAssumptions.map(([key, value]) => (
+                            <StatusBadge key={`${stress.identifier}-${key}`} tone="neutral">
+                              {`${key}: ${value}`}
+                            </StatusBadge>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <InlineEmpty message="No stress-test outputs were persisted on this completed analysis." />
+              )}
+            </ExpandableSection>
+
+            <ExpandableSection
+              description="Material committee risks and persisted risk-related agent findings."
+              title="Risk Analysis"
+            >
+              {materialRisks.length > 0 || riskFindings.length > 0 ? (
+                <div className="grid gap-3">
+                  {materialRisks.map((risk) => (
+                    <div
+                      className="rounded-2xl border border-border/70 bg-background/80 p-4"
+                      key={`${risk.category}-${risk.title}`}
+                    >
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="text-sm font-semibold text-foreground">{risk.title}</div>
+                        <StatusBadge tone={riskTone(risk.severity)}>{risk.severity}</StatusBadge>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        {risk.explanation}
+                      </p>
+                      {risk.financial_impact ? (
+                        <p className="mt-2 text-sm text-foreground">
+                          Financial impact: {risk.financial_impact}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                  {riskFindings.map((finding) => (
+                    <div
+                      className="rounded-2xl border border-border/70 bg-background/80 p-4"
+                      key={finding.finding_id}
+                    >
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="text-sm font-semibold text-foreground">{finding.title}</div>
+                        <StatusBadge tone={riskTone(finding.severity)}>{finding.severity}</StatusBadge>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        {finding.finding}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <InlineEmpty message="No persisted risk section was available for this completed analysis." />
+              )}
+            </ExpandableSection>
+
+            <ExpandableSection
+              description="Missing data that still matters to the investment decision."
+              title="Missing Information"
+            >
+              {missingInformation.length > 0 ? (
+                <SimpleItemList items={missingInformation} />
+              ) : (
+                <InlineEmpty message="No missing-information items were persisted on this completed analysis." />
+              )}
+            </ExpandableSection>
+
+            <ExpandableSection
+              description="Required deal truths and gating conditions from the investment committee output."
+              title="What Must Be True"
+            >
+              {whatMustBeTrue.length > 0 ? (
+                <div className="grid gap-3">
+                  {whatMustBeTrue.map((item) => (
+                    <div
+                      className="rounded-2xl border border-border/70 bg-background/80 p-4"
+                      key={item.condition}
+                    >
+                      <div className="text-sm font-semibold text-foreground">{item.condition}</div>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        Requirement: {item.threshold_or_requirement}
+                      </p>
+                      <p className="mt-2 text-sm text-foreground">
+                        Current status: {item.current_status}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <InlineEmpty message="No what-must-be-true conditions were persisted on this completed analysis." />
+              )}
+            </ExpandableSection>
+
+            <ExpandableSection
+              description="Follow-up diligence work from the investment committee and agent research outputs."
+              title="Due-Diligence Checklist"
+            >
+              {diligenceItems.length > 0 ? (
+                <SimpleItemList items={diligenceItems} />
+              ) : (
+                <InlineEmpty message="No due-diligence checklist items were persisted on this completed analysis." />
+              )}
+            </ExpandableSection>
+
+            <ExpandableSection
+              description="Traceable citations and evidence references supporting the rendered report."
+              title="Evidence and Sources"
+            >
+              {evidence.researchCitations.length > 0 || evidence.evidenceReferences.length > 0 ? (
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <div className="grid gap-3">
+                    <div className="text-sm font-semibold text-foreground">Research citations</div>
+                    {evidence.researchCitations.length > 0 ? (
+                      evidence.researchCitations.map((citation) => (
+                        <a
+                          className="rounded-2xl border border-border/70 bg-background/80 p-4 text-sm text-foreground hover:border-primary/40"
+                          href={citation.url}
+                          key={`${citation.label}-${citation.url}`}
+                          rel="noreferrer"
+                          target="_blank"
+                        >
+                          <div className="font-semibold">{citation.label}</div>
+                          <div className="mt-2 break-all text-muted-foreground">{citation.url}</div>
+                          <div className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                            {citation.note}
+                          </div>
+                        </a>
+                      ))
+                    ) : (
+                      <InlineEmpty message="No research citations were persisted on this completed analysis." />
+                    )}
+                  </div>
+                  <div className="grid gap-3">
+                    <div className="text-sm font-semibold text-foreground">Evidence references</div>
+                    {evidence.evidenceReferences.length > 0 ? (
+                      evidence.evidenceReferences.map((reference) => (
+                        <div
+                          className="rounded-2xl border border-border/70 bg-background/80 p-4"
+                          key={`${reference.sourceId}-${reference.locator}`}
+                        >
+                          <div className="text-sm font-semibold text-foreground">
+                            {reference.sourceId}
+                          </div>
+                          <div className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                            {reference.sourceType}
+                          </div>
+                          <p className="mt-2 text-sm text-foreground">{reference.locator}</p>
+                          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                            {reference.excerpt}
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      <InlineEmpty message="No evidence references were persisted on this completed analysis." />
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <InlineEmpty message="No traceable citations or evidence references were persisted on this completed analysis." />
+              )}
+            </ExpandableSection>
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader>
             <CardTitle>Analysis Summary</CardTitle>
             <CardDescription>
               Persisted identifiers and timestamps for this completed run.
@@ -341,6 +711,141 @@ export function AnalysisReportFlow(): React.JSX.Element {
           </CardContent>
         </Card>
       </section>
+    </div>
+  );
+}
+
+function ExpandableSection({
+  title,
+  description,
+  children,
+  defaultOpen = false,
+}: {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}): React.JSX.Element {
+  return (
+    <details className="group rounded-3xl border border-border/70 bg-background/60" open={defaultOpen}>
+      <summary className="cursor-pointer list-none px-5 py-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-lg font-semibold text-foreground">{title}</div>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
+          </div>
+          <StatusBadge tone="neutral">expand</StatusBadge>
+        </div>
+      </summary>
+      <div className="border-t border-border/70 px-5 py-5">{children}</div>
+    </details>
+  );
+}
+
+function ComparableSummaryGrid({
+  items,
+}: {
+  items: Array<{ label: string; value: string }>;
+}): React.JSX.Element {
+  return (
+    <div className="grid gap-3 sm:grid-cols-3">
+      {items.map((item) => (
+        <MetricCard key={item.label} label={item.label} value={item.value} />
+      ))}
+    </div>
+  );
+}
+
+function ComparableTable({
+  rows,
+}: {
+  rows: Array<{
+    address: string;
+    primary: string;
+    secondary: string;
+    tertiary: string;
+    link?: string | null;
+  }>;
+}): React.JSX.Element {
+  if (rows.length === 0) {
+    return <InlineEmpty message="No comparable rows were persisted for this section." />;
+  }
+
+  return (
+    <div className="grid gap-3">
+      {rows.map((row) => (
+        <div
+          className="rounded-2xl border border-border/70 bg-background/80 p-4"
+          key={`${row.address}-${row.primary}`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm font-semibold text-foreground">{row.address}</div>
+            {row.link ? (
+              <a
+                className="text-sm font-medium text-primary hover:underline"
+                href={row.link}
+                rel="noreferrer"
+                target="_blank"
+              >
+                Source
+              </a>
+            ) : null}
+          </div>
+          <div className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-3">
+            <div>{row.primary}</div>
+            <div>{row.secondary}</div>
+            <div>{row.tertiary}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ScenarioMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}): React.JSX.Element {
+  return (
+    <div className="rounded-2xl border border-border/60 bg-background/70 p-3">
+      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+        {label}
+      </div>
+      <div className="mt-2 text-sm font-medium text-foreground">{value}</div>
+    </div>
+  );
+}
+
+function SimpleItemList({
+  items,
+}: {
+  items: Array<{ title: string; detail: string; meta: string }>;
+}): React.JSX.Element {
+  return (
+    <div className="grid gap-3">
+      {items.map((item) => (
+        <div
+          className="rounded-2xl border border-border/70 bg-background/80 p-4"
+          key={`${item.title}-${item.meta}`}
+        >
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="text-sm font-semibold text-foreground">{item.title}</div>
+            <StatusBadge tone="neutral">{item.meta}</StatusBadge>
+          </div>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.detail}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function InlineEmpty({ message }: { message: string }): React.JSX.Element {
+  return (
+    <div className="rounded-2xl border border-border/70 bg-background/70 p-4 text-sm text-muted-foreground">
+      {message}
     </div>
   );
 }
@@ -484,4 +989,15 @@ function percentFromDecimal(value: unknown): string | null {
 
 function stringValue(value: unknown): string {
   return value === null || value === undefined || value === "" ? "N/A" : String(value);
+}
+
+function formatRange(
+  low: string | number | null | undefined,
+  high: string | number | null | undefined,
+): string {
+  if (low == null && high == null) {
+    return "N/A";
+  }
+
+  return `${formatCurrency(low ?? null)} - ${formatCurrency(high ?? null)}`;
 }
