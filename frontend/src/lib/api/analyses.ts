@@ -1,5 +1,6 @@
 import { fetchJson } from "./client";
 import type {
+  AnalysisCreateRequest,
   AnalysisCreateResponse,
   AnalysisDetailResponse,
   AnalysisListResponse,
@@ -11,7 +12,7 @@ export function getAnalysis(analysisId: string): Promise<AnalysisDetailResponse>
 
 export function createAnalysis(
   propertyId: string,
-  payload: Record<string, unknown>,
+  payload: AnalysisCreateRequest,
 ): Promise<AnalysisCreateResponse> {
   return fetchJson<AnalysisCreateResponse>(`/api/v1/properties/${propertyId}/analyses`, {
     method: "POST",

@@ -175,6 +175,86 @@ export type PropertyUpdateRequest = {
   current_version?: number | null;
 };
 
+export type AnalysisPreset = "conservative" | "standard" | "aggressive" | "custom";
+export type FinancingType = "conventional" | "cash";
+
+export type AcquisitionAssumptions = {
+  closing_costs?: NumericLike | null;
+  closing_cost_percent?: NumericLike | null;
+  lender_fees: NumericLike;
+  repairs: NumericLike;
+  initial_reserves: NumericLike;
+  other_acquisition_costs: NumericLike;
+};
+
+export type FinancingAssumptions = {
+  type: FinancingType;
+  down_payment_amount?: NumericLike | null;
+  down_payment_percent?: NumericLike | null;
+  interest_rate_percent?: NumericLike | null;
+  loan_term_years?: number | null;
+  loan_amount?: NumericLike | null;
+  points: NumericLike;
+  additional_lender_fees: NumericLike;
+  monthly_mortgage_insurance: NumericLike;
+};
+
+export type IncomeAssumptions = {
+  monthly_rent: NumericLike;
+  other_monthly_income: NumericLike;
+  vacancy_percent: NumericLike;
+};
+
+export type ExpenseAssumptions = {
+  annual_property_taxes?: NumericLike | null;
+  annual_insurance: NumericLike;
+  annual_hoa?: NumericLike | null;
+  management_percent: NumericLike;
+  maintenance_percent?: NumericLike | null;
+  maintenance_annual?: NumericLike | null;
+  capex_percent?: NumericLike | null;
+  capex_annual?: NumericLike | null;
+  leasing_fee_percent: NumericLike;
+  tenant_turnover_frequency_years: NumericLike;
+  turnover_cost: NumericLike;
+  owner_paid_utilities_monthly: NumericLike;
+  landscaping_monthly: NumericLike;
+  pest_control_monthly: NumericLike;
+  other_monthly_expenses: NumericLike;
+  other_annual_expenses: NumericLike;
+};
+
+export type ProjectionAssumptions = {
+  holding_period_years: number;
+  annual_rent_growth_percent: NumericLike;
+  annual_expense_growth_percent: NumericLike;
+  annual_appreciation_percent: NumericLike;
+  selling_cost_percent: NumericLike;
+};
+
+export type TargetAssumptions = {
+  monthly_cash_flow?: NumericLike | null;
+  cap_rate_percent?: NumericLike | null;
+  cash_on_cash_percent?: NumericLike | null;
+  dscr?: NumericLike | null;
+};
+
+export type AnalysisAssumptions = {
+  purchase_price: NumericLike;
+  preset: AnalysisPreset;
+  financing: FinancingAssumptions;
+  acquisition: AcquisitionAssumptions;
+  income: IncomeAssumptions;
+  expenses: ExpenseAssumptions;
+  projections: ProjectionAssumptions;
+  targets: TargetAssumptions;
+};
+
+export type AnalysisCreateRequest = {
+  assumptions: AnalysisAssumptions;
+  decision_context?: Record<string, unknown> | null;
+};
+
 export type AnalysisDetail = {
   id: string;
   property_id: string;
@@ -189,8 +269,8 @@ export type AnalysisDetail = {
   failure_stage?: string | null;
   error_code?: string | null;
   error_message?: string | null;
-  property_snapshot?: Record<string, unknown> | null;
-  assumptions?: Record<string, unknown> | null;
+  property_snapshot?: VerifiedPropertySnapshot | null;
+  assumptions?: AnalysisAssumptions | null;
   underwriting?: Record<string, unknown> | null;
   research?: Record<string, unknown> | null;
   agent_research?: Record<string, unknown> | null;
