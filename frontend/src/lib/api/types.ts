@@ -255,6 +255,37 @@ export type AnalysisCreateRequest = {
   decision_context?: Record<string, unknown> | null;
 };
 
+export type CommitteeReason = {
+  title: string;
+  explanation: string;
+  importance: string;
+  affected_metrics?: string[];
+};
+
+export type OfferRangeBasis = {
+  value: NumericLike;
+  source_metric: string;
+  source_path: string;
+  description: string;
+};
+
+export type InvestmentCommitteeOutput = {
+  recommendation: string;
+  recommendation_summary: string;
+  recommendation_confidence: NumericLike;
+  recommendation_confidence_reasons?: string[];
+  asking_price: NumericLike;
+  supported_offer_low?: NumericLike | null;
+  supported_offer_high?: NumericLike | null;
+  recommended_offer_basis?: OfferRangeBasis[];
+  investment_thesis: string;
+  strongest_upside: string;
+  strongest_downside: string;
+  reasons_to_proceed?: CommitteeReason[];
+  reasons_not_to_proceed?: CommitteeReason[];
+  warnings?: string[];
+};
+
 export type AnalysisDetail = {
   id: string;
   property_id: string;
@@ -274,7 +305,7 @@ export type AnalysisDetail = {
   underwriting?: Record<string, unknown> | null;
   research?: Record<string, unknown> | null;
   agent_research?: Record<string, unknown> | null;
-  investment_committee?: Record<string, unknown> | null;
+  investment_committee?: InvestmentCommitteeOutput | null;
   execution?: Record<string, unknown> | null;
 };
 
