@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 export function TopNav(): React.JSX.Element {
   return (
     <header className="sticky top-0 z-20 border-b border-border/70 bg-background/90 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
         <div className="flex items-center gap-4">
           <Link className="flex items-center gap-3" href="/">
             <div className="rounded-2xl bg-primary p-2 text-primary-foreground">
@@ -37,10 +37,22 @@ export function TopNav(): React.JSX.Element {
           </Button>
         </nav>
 
-        <Button variant="outline">
+        <Button className="w-full sm:w-auto" variant="outline">
           <SearchCheck className="mr-2 h-4 w-4" />
           Backend Connected
         </Button>
+
+        <nav className="flex w-full items-center gap-2 md:hidden">
+          <Button asChild className="flex-1" variant="ghost">
+            <Link href="/">New Analysis</Link>
+          </Button>
+          <Button asChild className="flex-1">
+            <Link href="/">
+              Start Workflow
+              <ChevronRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+        </nav>
       </div>
     </header>
   );

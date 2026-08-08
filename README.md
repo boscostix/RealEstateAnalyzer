@@ -2,6 +2,8 @@
 
 `RealEstateAnalyzer` is a FastAPI application for real-estate listing extraction, property verification, deterministic underwriting, research aggregation, agent-research synthesis, and investment-committee reporting.
 
+It also includes a Next.js demo frontend in `frontend/` that walks through the full analyst workflow from listing submission to rerun analysis history.
+
 Milestone 6 adds a persisted demo workflow on top of the earlier in-memory APIs:
 
 - Properties are stored with stable IDs.
@@ -109,6 +111,48 @@ Docs:
 
 - `http://127.0.0.1:8000/docs`
 - `http://127.0.0.1:8000/redoc`
+
+## Run the frontend demo
+
+The frontend lives in `frontend/` and talks to the persisted Milestone 6 APIs.
+
+Install frontend dependencies:
+
+```bash
+cd frontend
+npm install
+```
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+The frontend expects the FastAPI server to be running locally. By default it targets `http://127.0.0.1:8000`.
+
+Frontend validation commands:
+
+```bash
+npm run lint
+npm run typecheck
+npm run test
+npm run build
+```
+
+### Frontend demo workflow
+
+1. Open the landing page and paste a Zillow or Redfin listing URL.
+2. Review the extraction preview and persist the property.
+3. Verify or fill in property values on the verification page.
+4. Set assumptions and start the analysis.
+5. Poll the analysis progress page until the report opens.
+6. Review the completed report and open prior versions from property history.
+7. Start a rerun with optional assumption overrides.
+
+### Demo fixture
+
+`frontend/src/lib/demo-fixtures.ts` contains a stable property, analysis history, and completed analysis payload used by frontend tests and demo-oriented UI validation. It does not contain secrets.
 
 ## Persisted demo workflow
 

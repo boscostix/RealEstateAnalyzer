@@ -10,6 +10,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { ErrorState } from "@/components/common/error-state";
+import { PageLoadingState } from "@/components/common/page-loading-state";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -134,14 +135,7 @@ export function PropertyVerificationFlow(): React.JSX.Element {
   const submissionError = mutationMessage(saveMutation.error);
 
   if (propertyQuery.isPending) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Loading property verification</CardTitle>
-          <CardDescription>Fetching the persisted property and verification context.</CardDescription>
-        </CardHeader>
-      </Card>
-    );
+    return <PageLoadingState description="Fetching the persisted property and verification context." title="Loading property verification" />;
   }
 
   if (propertyQuery.error) {
@@ -250,7 +244,11 @@ export function PropertyVerificationFlow(): React.JSX.Element {
               })}
               <div className="md:col-span-2">
                 {submissionError ? (
-                  <div className="mb-4 rounded-2xl border border-danger/30 bg-danger/5 p-4 text-sm text-danger">
+                  <div
+                    aria-live="polite"
+                    className="mb-4 rounded-2xl border border-danger/30 bg-danger/5 p-4 text-sm text-danger"
+                    role="alert"
+                  >
                     {submissionError}
                   </div>
                 ) : null}

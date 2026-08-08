@@ -9,7 +9,7 @@ type EmptyStateProps = {
 
 export function EmptyState({ title, message }: EmptyStateProps): React.JSX.Element {
   return (
-    <Card>
+    <Card aria-live="polite">
       <CardHeader>
         <div className="flex items-center gap-3">
           <div className="rounded-full bg-muted p-2 text-muted-foreground">

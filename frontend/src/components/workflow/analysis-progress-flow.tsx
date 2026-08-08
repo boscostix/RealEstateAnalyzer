@@ -7,6 +7,7 @@ import { ArrowRight, LoaderCircle, RotateCcw } from "lucide-react";
 import { useEffect } from "react";
 
 import { ErrorState } from "@/components/common/error-state";
+import { PageLoadingState } from "@/components/common/page-loading-state";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,14 +63,7 @@ export function AnalysisProgressFlow(): React.JSX.Element {
   }, [query.data?.analysis, router]);
 
   if (query.isPending) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Loading analysis progress</CardTitle>
-          <CardDescription>Fetching the current execution state for this analysis.</CardDescription>
-        </CardHeader>
-      </Card>
-    );
+    return <PageLoadingState description="Fetching the current execution state for this analysis." title="Loading analysis progress" />;
   }
 
   if (query.error) {
@@ -214,8 +208,12 @@ export function AnalysisProgressFlow(): React.JSX.Element {
                 <Link href="/">Start another property</Link>
               </Button>
               {rerunMutation.error ? (
-                <div className="rounded-2xl border border-danger/30 bg-danger/5 p-4 text-sm text-danger">
-                  Unable to start the rerun right now.
+                <div
+                  aria-live="polite"
+                  className="rounded-2xl border border-danger/30 bg-danger/5 p-4 text-sm text-danger"
+                  role="alert"
+                >
+                  Unable to start the rerun right now. Try again from the property history page if this keeps happening.
                 </div>
               ) : null}
             </CardContent>

@@ -9,6 +9,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { ErrorState } from "@/components/common/error-state";
+import { PageLoadingState } from "@/components/common/page-loading-state";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -201,14 +202,7 @@ export function AssumptionsFlow(): React.JSX.Element {
   });
 
   if (propertyQuery.isPending) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Loading assumptions</CardTitle>
-          <CardDescription>Preparing the property context for underwriting assumptions.</CardDescription>
-        </CardHeader>
-      </Card>
-    );
+    return <PageLoadingState description="Preparing the property context for underwriting assumptions." title="Loading assumptions" />;
   }
 
   if (propertyQuery.error) {

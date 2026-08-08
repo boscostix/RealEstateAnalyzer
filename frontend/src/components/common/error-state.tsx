@@ -17,7 +17,7 @@ export function ErrorState({
   onAction,
 }: ErrorStateProps): React.JSX.Element {
   return (
-    <Card className="border-danger/20">
+    <Card aria-live="polite" className="border-danger/20" role="alert">
       <CardHeader>
         <div className="flex items-center gap-3">
           <div className="rounded-full bg-danger/10 p-2 text-danger">

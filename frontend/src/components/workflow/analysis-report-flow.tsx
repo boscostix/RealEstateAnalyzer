@@ -8,6 +8,7 @@ import { useEffect } from "react";
 
 import { ErrorState } from "@/components/common/error-state";
 import { EmptyState } from "@/components/common/empty-state";
+import { PageLoadingState } from "@/components/common/page-loading-state";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,14 +65,7 @@ export function AnalysisReportFlow(): React.JSX.Element {
   }, [query.data?.analysis, router]);
 
   if (query.isPending) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Loading completed analysis</CardTitle>
-          <CardDescription>Preparing the completed report view for this analysis.</CardDescription>
-        </CardHeader>
-      </Card>
-    );
+    return <PageLoadingState description="Preparing the completed report view for this analysis." title="Loading completed analysis" />;
   }
 
   if (query.error) {

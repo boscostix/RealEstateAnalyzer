@@ -9,7 +9,9 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { EmptyState } from "@/components/common/empty-state";
 import { ErrorState } from "@/components/common/error-state";
+import { PageLoadingState } from "@/components/common/page-loading-state";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -67,14 +69,7 @@ export function PropertyHistoryFlow(): React.JSX.Element {
   });
 
   if (propertyQuery.isPending || analysesQuery.isPending) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Loading property history</CardTitle>
-          <CardDescription>Fetching the property record and prior analysis versions.</CardDescription>
-        </CardHeader>
-      </Card>
-    );
+    return <PageLoadingState description="Fetching the property record and prior analysis versions." title="Loading property history" />;
   }
 
   if (propertyQuery.error || analysesQuery.error) {
@@ -216,7 +211,7 @@ export function PropertyHistoryFlow(): React.JSX.Element {
                               : `/analyses/${analysis.id}`
                           }
                         >
-                          Open report
+                          {analysis.status === "completed" ? "Open report" : "Open analysis"}
                           <ArrowRight className="ml-2 h-4 w-4" />
                         </Link>
                       </Button>
@@ -291,9 +286,10 @@ export function PropertyHistoryFlow(): React.JSX.Element {
               );
             })
           ) : (
-            <div className="rounded-2xl border border-border/70 bg-background/70 p-4 text-sm text-muted-foreground">
-              No analysis history is available for this property yet.
-            </div>
+            <EmptyState
+              message="Start an analysis from the assumptions page to build the first persisted version for this property."
+              title="No analysis history yet"
+            />
           )}
         </CardContent>
       </Card>
