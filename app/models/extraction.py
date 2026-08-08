@@ -64,6 +64,7 @@ class ExtractListingResponse(BaseModel):
     source_url: str | None = None
     property: NormalizedProperty | None = None
     metadata: ExtractionMetadata | None = None
+    field_provenance: dict[str, ExtractedField[Any]] | None = None
     error: ErrorDetail | None = None
 
 

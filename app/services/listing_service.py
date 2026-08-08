@@ -124,4 +124,5 @@ def _response_from_result(result: PropertyExtractionResult) -> ExtractListingRes
         source_url=result.source_url,
         property=result.property,
         metadata=result.metadata,
+        field_provenance=result.field_provenance,
     )

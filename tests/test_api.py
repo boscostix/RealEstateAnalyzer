@@ -116,6 +116,7 @@ def test_extract_listing_returns_provider_for_supported_url() -> None:
     assert payload["provider"] == "zillow"
     assert payload["property"]["provider"] == "zillow"
     assert payload["property"]["asking_price"] == "479990"
+    assert payload["field_provenance"]["asking_price"]["source"] == "next_data"
     assert response.headers["X-Request-ID"] == "req-123"
 
 

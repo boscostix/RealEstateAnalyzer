@@ -30,8 +30,8 @@ export function TopNav(): React.JSX.Element {
             <Link href="/">New Analysis</Link>
           </Button>
           <Button asChild variant="ghost">
-            <Link href="/properties/demo">
-              Properties
+            <Link href="/">
+              Start Workflow
               <ChevronRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
