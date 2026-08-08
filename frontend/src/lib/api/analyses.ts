@@ -4,6 +4,7 @@ import type {
   AnalysisCreateResponse,
   AnalysisDetailResponse,
   AnalysisListResponse,
+  AnalysisRerunRequest,
 } from "./types";
 
 export function getAnalysis(analysisId: string): Promise<AnalysisDetailResponse> {
@@ -26,7 +27,7 @@ export function listAnalyses(propertyId: string): Promise<AnalysisListResponse> 
 
 export function rerunAnalysis(
   analysisId: string,
-  payload: Record<string, unknown>,
+  payload: AnalysisRerunRequest,
 ): Promise<AnalysisCreateResponse> {
   return fetchJson<AnalysisCreateResponse>(`/api/v1/analyses/${analysisId}/rerun`, {
     method: "POST",

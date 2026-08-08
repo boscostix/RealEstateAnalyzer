@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useEffect } from "react";
 
 import { ErrorState } from "@/components/common/error-state";
@@ -12,7 +12,9 @@ import { StatusBadge } from "@/components/common/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAnalysis } from "@/lib/api/analyses";
+import { listPropertyAnalyses } from "@/lib/api/properties";
 import type { CommitteeReason } from "@/lib/api/types";
+import { parentVersionLabel, versionNavigation } from "@/lib/history-workflow";
 import {
   completedReportPath,
   humanizeStage,
@@ -43,6 +45,11 @@ export function AnalysisReportFlow(): React.JSX.Element {
       const status = queryInfo.state.data?.analysis.status;
       return shouldPollAnalysis(status) ? 3000 : false;
     },
+  });
+  const historyQuery = useQuery({
+    enabled: Boolean(query.data?.analysis.property_id),
+    queryKey: ["property-analyses", query.data?.analysis.property_id],
+    queryFn: () => listPropertyAnalyses(query.data!.analysis.property_id),
   });
 
   useEffect(() => {
@@ -90,6 +97,7 @@ export function AnalysisReportFlow(): React.JSX.Element {
   }
 
   const committee = analysis.investment_committee;
+  const analyses = historyQuery.data?.analyses ?? [];
   const metrics = recordValue(analysis.underwriting, "metrics");
   const acquisition = recordValue(analysis.underwriting, "acquisition");
   const maximumOffer = recordValue(analysis.underwriting, "maximum_offer");
@@ -129,6 +137,8 @@ export function AnalysisReportFlow(): React.JSX.Element {
   const riskFindings = (analysis.agent_research?.consolidated_findings ?? []).filter((finding) =>
     finding.category.toLowerCase().includes("risk"),
   );
+  const lineageLabel = parentVersionLabel(analysis, analyses);
+  const navigation = versionNavigation(analysis.id, analyses);
 
   return (
     <div className="grid gap-8">
@@ -147,6 +157,8 @@ export function AnalysisReportFlow(): React.JSX.Element {
               ) : (
                 <StatusBadge tone="neutral">Recommendation unavailable</StatusBadge>
               )}
+              <StatusBadge tone="neutral">{`v${analysis.version}`}</StatusBadge>
+              {lineageLabel ? <StatusBadge tone="warning">{lineageLabel}</StatusBadge> : null}
             </div>
             <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
               <div className="space-y-4">
@@ -692,15 +704,34 @@ export function AnalysisReportFlow(): React.JSX.Element {
           <CardHeader>
             <CardTitle>Workflow Links</CardTitle>
             <CardDescription>
-              You can revisit progress, refresh the report route, or start another property.
+              You can navigate between versions, revisit property history, or start another property.
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-3 sm:flex-row">
+          <CardContent className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Button asChild variant="outline">
               <Link href={`/analyses/${analysis.id}`}>
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to progress
               </Link>
+            </Button>
+            {navigation.previous ? (
+              <Button asChild variant="outline">
+                <Link href={`/analyses/${navigation.previous.id}/report`}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Open v{navigation.previous.version}
+                </Link>
+              </Button>
+            ) : null}
+            {navigation.next ? (
+              <Button asChild variant="outline">
+                <Link href={`/analyses/${navigation.next.id}/report`}>
+                  Open v{navigation.next.version}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            ) : null}
+            <Button asChild variant="outline">
+              <Link href={`/properties/${analysis.property_id}`}>Property history</Link>
             </Button>
             <Button asChild variant="outline">
               <Link href={completedReportPath(analysis.id)}>Refresh report route</Link>

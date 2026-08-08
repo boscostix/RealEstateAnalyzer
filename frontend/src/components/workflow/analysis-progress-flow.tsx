@@ -42,7 +42,7 @@ export function AnalysisProgressFlow(): React.JSX.Element {
     },
   });
   const rerunMutation = useMutation({
-    mutationFn: () => rerunAnalysis(analysisId, {}),
+    mutationFn: () => rerunAnalysis(analysisId, { assumption_overrides: {} }),
     onSuccess: (response) => {
       router.push(`/analyses/${response.analysis.id}`);
     },
@@ -205,6 +205,11 @@ export function AnalysisProgressFlow(): React.JSX.Element {
                   </Link>
                 </Button>
               ) : null}
+              <Button asChild variant="outline">
+                <Link href={`/properties/${analysis.property_id}`}>
+                  Property history
+                </Link>
+              </Button>
               <Button asChild variant="outline">
                 <Link href="/">Start another property</Link>
               </Button>

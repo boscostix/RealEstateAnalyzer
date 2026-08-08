@@ -255,6 +255,10 @@ export type AnalysisCreateRequest = {
   decision_context?: Record<string, unknown> | null;
 };
 
+export type AnalysisRerunRequest = {
+  assumption_overrides: Record<string, unknown>;
+};
+
 export type CommitteeReason = {
   title: string;
   explanation: string;
